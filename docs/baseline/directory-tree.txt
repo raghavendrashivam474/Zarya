@@ -1,0 +1,101 @@
+﻿agent
+  backends
+    base.py
+    factory.py
+    linux_gnome.py
+    linux_wayland.py
+    macos.py
+    windows.py
+    __init__.py
+  tools
+    applications.py
+    browser.py
+    camera.py
+    clipboard.py
+    coding.py
+    confirmation.py
+    conversation.py
+    files.py
+    google.py
+    hyprland.py
+    iitm.py
+    news.py
+    os_input.py
+    pc.py
+    screenshot.py
+    search.py
+    startup.py
+    system.py
+    terminal.py
+    weather.py
+    websites.py
+    windows.py
+    __init__.py
+  README.md
+  registry.py
+  requirements.txt
+  server.py
+  __init__.py
+assets
+  chatgpt.png
+  frame.jpg
+docs
+  baseline
+    directory-tree.txt
+    file-inventory.txt
+public
+  assets
+    download.gif
+    download_static.png
+    idle.webm
+    orb2.gif
+    talking.webm
+    thinking.webm
+src
+  components
+    ApiKeyGate.tsx
+    BrowserAgent.tsx
+    ElysiaCoreVisualizer.tsx
+    HolographicProjector.tsx
+    MemoryDashboard.tsx
+    SettingsPanel.tsx
+    SudoPopup.tsx
+    TextChatFallback.tsx
+    Toast.tsx
+    TranscriptPanel.tsx
+  lib
+    audio.ts
+    memoryTypes.ts
+    reminderTypes.ts
+    settingsStore.ts
+    wakeWord.ts
+  App.tsx
+  index.css
+  main.tsx
+.env.local
+.gitignore
+Agents.md
+Architecture.md
+CONTRIBUTING.md
+Design.md
+index.html
+local-agent.js
+Memory.md
+metadata.json
+package-lock.json
+package.json
+Phases.md
+PRD.md
+README.md
+rebase_script.sh
+Rules.md
+run_agent.py
+sarang_profile.html
+server.ts
+server_memory.ts
+server_paths.ts
+server_reminders.ts
+start_elysia.bat
+start_elysia.sh
+tsconfig.json
+vite.config.ts

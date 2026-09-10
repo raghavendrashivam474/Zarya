@@ -1,0 +1,3 @@
+﻿Upstream baseline captured: 2026-09-10T22:32:22.4361005+05:30
+HEAD: 1499e11b2d1c2398591329ae27e378cedd744e19
+Last commit: 1499e11 Move architecture and anime images into assets folder (SarangRao20, 5 days ago)

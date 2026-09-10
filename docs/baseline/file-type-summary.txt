@@ -1,0 +1,22 @@
+﻿
+Count Name      
+----- ----      
+   34 .py       
+   12 .tsx      
+   10 .md       
+   10 .ts       
+    4 .json     
+    3 .webm     
+    2 .sh       
+    2 .gif      
+    2 .png      
+    2 .html     
+    1 .bat      
+    1 .css      
+    1 .gitignore
+    1 .local    
+    1 .txt      
+    1 .js       
+    1 .jpg      
+
+

@@ -1,0 +1,10 @@
+﻿agent/README.md
+agent/requirements.txt
+package.json
+package-lock.json
+README.md
+server.ts
+server_memory.ts
+server_paths.ts
+server_reminders.ts
+src/main.tsx
