@@ -1,16 +1,23 @@
-﻿# Zarya Development Setup
+﻿# Zarya Development Setup (Inherited Baseline)
 
-## Prerequisites
-- Node.js (v24.16.0 or LTS)
-- Python (v3.13 or compatible)
-- Playwright browsers
-- API keys (see .env.example)
+## Runtime Prerequisites
+- **Node.js**: LTS (>= 20)
+- **Package Manager**: npm
+- **Python**: Python 3.10+
 
-## Clone
-\\\powershell
-git clone https://github.com/SarangRao20/Elysia-AI.git Zarya
-cd Zarya
-\\\
+## Available Scripts in package.json
+- `dev`: tsx server.ts
+- `build`: vite build && esbuild server.ts --bundle --platform=node --format=cjs --sourcemap --outfile=dist/server.cjs
+- `start`: node dist/server.cjs
+- `preview`: vite preview
+- `clean`: rm -rf dist server.js
+- `lint`: tsc --noEmit
 
-## Installation & Startup
-See the inherited \README.md\ file for detailed setup commands.
+## Required Environment Variables
+
+
+## Quick Start
+1. Install dependencies: `npm install`
+2. Setup browsers: `npx playwright install`
+3. Copy environment file: `cp .env.example .env`
+4. Start development server: `npm run dev`
