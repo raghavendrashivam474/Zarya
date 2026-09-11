@@ -27,6 +27,7 @@ Each domain tool module defines a dedicated helper (`_verify_file_created`, `_ve
   "detail": "<human_readable_explanation>",
   "observation": { "<domain_specific_evidence>" }
 }
+```
 Consequences
 Positive: Simple, zero-dependency, testable, fast. Preserves full backward compatibility with S0/S1.
 Negative: Schema shape is governed by convention and regression test assertions rather than an enforced metaclass.

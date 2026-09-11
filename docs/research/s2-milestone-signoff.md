@@ -3,7 +3,7 @@
 **Milestone:** S2 — Verification Fabric
 **Baseline:** v0.2.0-s1 (7315a63)
 **Branch:** `zarya/s2-verification-fabric`
-**Date:** 2026-09-12
+**Date:** 2026-09-11
 
 ---
 
@@ -17,7 +17,7 @@
 - **Architectural Decision**: ADR 0003 recorded Option A (Decentralized domain helpers with shared schema conventions).
 - **Test Coverage**:
   - S1 regression suite: 8/8 tests PASS
-  - S2 multi-domain suite: 9/9 tests PASS
+  - S2 multi-domain suite: 10/10 tests PASS
   - Live Windows smoke tests: 3/3 scenarios PASS
 - **Preserved Safety**: Zero regressions to authorization gates, sandbox safety roots, or backend execution.
 
