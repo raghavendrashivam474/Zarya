@@ -9,6 +9,7 @@ from typing import Any, Dict
 
 from ..registry import STATE, ToolError, register
 from ..backends import get_backend
+from ..state import StateObservation, StateDomain, cache as state_cache
 
 DANGEROUS_COMMAND_PATTERNS: list[str] = [
     "rm -rf /", "rm -rf --no-preserve-root", "rm -rf /*", "rm -rf ~", "rmdir /s",
@@ -125,7 +126,16 @@ def run_terminal_command(args: Dict[str, Any]) -> Dict[str, Any]:
 
     result = get_backend().terminal.run_command(command)
     verification = _verify_terminal_execution(command, result)
-    return {"result": f"Executed command: {command}", "output": result, "verification": verification}
+
+    # S3: capture state observation from verification
+    state_obs = StateObservation.from_verification(
+        domain=StateDomain.TERMINAL.value,
+        subject=command,
+        verification=verification,
+    )
+    state_cache.record(state_obs)
+
+    return {"result": f"Executed command: {command}", "output": result, "verification": verification, "state": state_obs.to_dict()}
 
 
 @register("provideSudoPassword")

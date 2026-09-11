@@ -17,6 +17,7 @@ from typing import Any, Dict
 
 from ..registry import ToolError, register
 from ..backends import get_backend
+from ..state import StateObservation, StateDomain, cache as state_cache
 
 APP_COMMANDS: Dict[str, Dict[str, str]] = {
     "notepad": {"exe": "notepad.exe", "image": "notepad.exe", "label": "Notepad", "linux_cmd": "gedit", "linux_image": "gedit"},
@@ -170,9 +171,18 @@ def open_application(args: Dict[str, Any]) -> Dict[str, Any]:
     # S1: verify the application actually appeared
     verification = _verify_application_launched(spec)
 
+    # S3: capture state observation from verification
+    state_obs = StateObservation.from_verification(
+        domain=StateDomain.APPLICATION.value,
+        subject=spec.get("image", spec["label"]),
+        verification=verification,
+    )
+    state_cache.record(state_obs)
+
     return {
         "result": f"{spec['label']} opened.",
         "verification": verification,
+        "state": state_obs.to_dict(),
     }
 
 

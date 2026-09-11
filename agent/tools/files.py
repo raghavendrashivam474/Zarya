@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..registry import ToolError, register
+from ..state import StateObservation, StateDomain, cache as state_cache
 
 HOME = Path(os.path.expanduser("~"))
 
@@ -168,7 +169,16 @@ def create_file(args: Dict[str, Any]) -> Dict[str, Any]:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(str(content), encoding="utf-8")
     verification = _verify_file_created(p, expected_content=str(content))
-    return {"result": f"Created file: {p}", "path": str(p), "verification": verification}
+
+    # S3: capture state observation from verification
+    state_obs = StateObservation.from_verification(
+        domain=StateDomain.FILESYSTEM.value,
+        subject=str(p),
+        verification=verification,
+    )
+    state_cache.record(state_obs)
+
+    return {"result": f"Created file: {p}", "path": str(p), "verification": verification, "state": state_obs.to_dict()}
 
 
 @register("readFile")
