@@ -132,6 +132,12 @@ def _verify_file_created(p: Path, expected_content: str = None) -> Dict[str, Any
                     }
             except Exception as read_exc:
                 observation["content_check_error"] = str(read_exc)
+                return {
+                    "status": "UNKNOWN",
+                    "method": "filesystem_content_check",
+                    "detail": f"Unable to verify file content: {read_exc}",
+                    "observation": observation,
+                }
 
         return {
             "status": "VERIFIED_SUCCESS",

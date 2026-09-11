@@ -52,6 +52,22 @@ class TestS2FilesystemVerification(unittest.TestCase):
         self.assertEqual(res["method"], "filesystem_content_check")
         self.assertFalse(res["observation"]["content_matches"])
 
+    @patch("agent.tools.files.Path.exists", return_value=True)
+    @patch("agent.tools.files.Path.stat")
+    @patch("agent.tools.files.Path.read_text", side_effect=OSError("Permission denied"))
+    def test_content_verification_exception_is_unknown(self, mock_read, mock_stat, mock_exists):
+        """If content cannot be read, status must be UNKNOWN (no false successes)."""
+        mock_stat.return_value = MagicMock(st_size=11)
+        p = Path("C:/fake/path.txt")
+
+        res = _verify_file_created(p, expected_content="hello zarya")
+
+        self.assertEqual(res["status"], "UNKNOWN")
+        self.assertEqual(res["method"], "filesystem_content_check")
+        self.assertIn("content_check_error", res["observation"])
+        self.assertIn("Permission denied", res["observation"]["content_check_error"])
+
+
     @patch("agent.tools.files.Path.exists", return_value=False)
     def test_file_does_not_exist(self, mock_exists):
         """If the file is missing, status must be VERIFIED_FAILURE."""
