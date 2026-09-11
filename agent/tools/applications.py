@@ -1,13 +1,18 @@
-"""
+﻿"""
 Application control: launch and close common applications.
 
 Uses the OS backend for platform-independent app launching and closing.
+
+S1: Added post-launch verification to distinguish execution success
+from actual application state confirmation.
 """
 
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
+import time
 from typing import Any, Dict
 
 from ..registry import ToolError, register
@@ -21,13 +26,13 @@ APP_COMMANDS: Dict[str, Dict[str, str]] = {
     "calculator": {"shell": "calc", "image": "CalculatorApp.exe", "label": "Calculator", "linux_cmd": "gnome-calculator", "linux_image": "gnome-calculator"},
     "calc": {"shell": "calc", "image": "CalculatorApp.exe", "label": "Calculator", "linux_cmd": "gnome-calculator", "linux_image": "gnome-calculator"},
     "file explorer": {"shell": "explorer", "image": "explorer.exe", "label": "File Explorer", "linux_cmd": "nautilus", "linux_image": "nautilus"},
-    "explorer": {"shell": "explorer", "image": "explorer.exe", "label": "File Explorer", "linux_cmd": "nautilus", "linux_image": "nautilus"},
+    "explorer": {"shell": "explorer", "image": "explorer.exe", "label": "File Explorer", "linux_cmd": "nautilus", "linux_image": "nautilus"},   
     "task manager": {"shell": "taskmgr", "image": "Taskmgr.exe", "label": "Task Manager", "linux_cmd": "gnome-system-monitor", "linux_image": "gnome-system-monitor"},
     "taskmanager": {"shell": "taskmgr", "image": "Taskmgr.exe", "label": "Task Manager", "linux_cmd": "gnome-system-monitor", "linux_image": "gnome-system-monitor"},
     "settings": {"uwp": "ms-settings:", "image": "SystemSettings.exe", "label": "Settings", "linux_cmd": "gnome-control-center", "linux_image": "gnome-control-center"},
     "command prompt": {"exe": "cmd.exe", "image": "cmd.exe", "label": "Command Prompt", "linux_cmd": "gnome-terminal", "linux_image": "gnome-terminal-server"},
     "cmd": {"exe": "cmd.exe", "image": "cmd.exe", "label": "Command Prompt", "linux_cmd": "gnome-terminal", "linux_image": "gnome-terminal-server"},
-    "powershell": {"exe": "powershell.exe", "image": "powershell.exe", "label": "PowerShell", "linux_cmd": "pwsh", "linux_image": "pwsh"},
+    "powershell": {"exe": "powershell.exe", "image": "powershell.exe", "label": "PowerShell", "linux_cmd": "pwsh", "linux_image": "pwsh"},      
     "wordpad": {"shell": "write", "image": "wordpad.exe", "label": "WordPad", "linux_cmd": "abiword", "linux_image": "abiword"},
     "paint": {"shell": "mspaint", "image": "mspaint.exe", "label": "Paint", "linux_cmd": "gimp", "linux_image": "gimp"},
     "snipping tool": {"uwp": "ms-screenclip:", "image": "ScreenClippingHost.exe", "label": "Snipping Tool", "linux_cmd": "gnome-screenshot", "linux_image": "gnome-screenshot"},
@@ -72,6 +77,82 @@ def _launch_hyprland(cmd: str, floating: bool, size: str = "60% 60%") -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# S1: Post-launch state verification
+# ---------------------------------------------------------------------------
+
+def _verify_application_launched(
+    spec: Dict[str, str],
+    timeout_s: float = 3.0,
+    interval_s: float = 0.5,
+) -> Dict[str, Any]:
+    """Check whether the expected process is running after launch.
+
+    Uses ``tasklist`` on Windows to look for the process image name
+    recorded in *spec*.  Polls at *interval_s* for up to *timeout_s*.
+
+    Returns a dict with at least ``status`` (one of VERIFIED_SUCCESS,
+    VERIFIED_FAILURE, UNKNOWN) and supporting detail fields.
+    """
+    image = spec.get("image")
+    if not image:
+        return {
+            "status": "UNKNOWN",
+            "method": "none",
+            "detail": "No process image specified in app spec.",
+        }
+
+    if platform.system() != "Windows":
+        return {
+            "status": "UNKNOWN",
+            "method": "none",
+            "detail": f"Verification not yet implemented for {platform.system()}.",
+        }
+
+    deadline = time.time() + timeout_s
+    start = time.time()
+
+    while time.time() < deadline:
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {image}", "/NH"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            output = result.stdout.strip()
+            # tasklist prints "INFO: No tasks are running..." when empty
+            if output and "INFO:" not in output and image.lower() in output.lower():
+                elapsed_ms = int((time.time() - start) * 1000)
+                return {
+                    "status": "VERIFIED_SUCCESS",
+                    "method": "process_image_check",
+                    "image": image,
+                    "observation_window_ms": elapsed_ms,
+                    "detail": f"Process {image} found within observation window.",
+                }
+        except Exception as exc:
+            return {
+                "status": "UNKNOWN",
+                "method": "process_image_check",
+                "image": image,
+                "detail": f"Observation mechanism failed: {exc}",
+            }
+        time.sleep(interval_s)
+
+    return {
+        "status": "VERIFIED_FAILURE",
+        "method": "process_image_check",
+        "image": image,
+        "observation_window_ms": int(timeout_s * 1000),
+        "detail": f"Process {image} not found within {timeout_s}s observation window.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tool handlers
+# ---------------------------------------------------------------------------
+
 @register("openApplication")
 def open_application(args: Dict[str, Any]) -> Dict[str, Any]:
     name = args.get("name") or args.get("application")
@@ -85,7 +166,14 @@ def open_application(args: Dict[str, Any]) -> Dict[str, Any]:
         _launch_hyprland(linux_cmd, floating=True, size=size)
     else:
         get_backend().launcher.launch(spec)
-    return {"result": f"{spec['label']} opened."}
+
+    # S1: verify the application actually appeared
+    verification = _verify_application_launched(spec)
+
+    return {
+        "result": f"{spec['label']} opened.",
+        "verification": verification,
+    }
 
 
 @register("closeApplication")
