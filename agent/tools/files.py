@@ -1,4 +1,4 @@
-"""
+﻿"""
 File management: create / read / rename / delete / move / open / search.
 
 Safety model:
@@ -96,6 +96,57 @@ def _ensure_safe(p: Path, allow_anywhere: bool = False) -> None:
     )
 
 
+
+def _verify_file_created(p: Path, expected_content: str = None) -> Dict[str, Any]:
+    """Verify that a file exists (and optionally matches content) after creation.
+
+    Returns a dict with `status` (VERIFIED_SUCCESS, VERIFIED_FAILURE, UNKNOWN)
+    and supporting observation fields, matching the S1 verification contract.
+    """
+    try:
+        if not p.exists():
+            return {
+                "status": "VERIFIED_FAILURE",
+                "method": "filesystem_exists",
+                "detail": f"File does not exist after creation: {p}",
+                "observation": {"path": str(p), "exists": False},
+            }
+
+        observation: Dict[str, Any] = {
+            "path": str(p),
+            "exists": True,
+            "size_bytes": p.stat().st_size,
+        }
+
+        if expected_content is not None:
+            try:
+                actual = p.read_text(encoding="utf-8")
+                content_match = actual == expected_content
+                observation["content_matches"] = content_match
+                if not content_match:
+                    return {
+                        "status": "VERIFIED_FAILURE",
+                        "method": "filesystem_content_check",
+                        "detail": "File exists but content does not match expected.",
+                        "observation": observation,
+                    }
+            except Exception as read_exc:
+                observation["content_check_error"] = str(read_exc)
+
+        return {
+            "status": "VERIFIED_SUCCESS",
+            "method": "filesystem_content_check" if expected_content is not None else "filesystem_exists",
+            "detail": f"File verified at {p} ({observation['size_bytes']} bytes).",
+            "observation": observation,
+        }
+    except Exception as exc:
+        return {
+            "status": "UNKNOWN",
+            "method": "filesystem_exists",
+            "detail": f"Verification mechanism failed: {exc}",
+            "observation": {"path": str(p), "error": str(exc)},
+        }
+
 @register("createFile")
 def create_file(args: Dict[str, Any]) -> Dict[str, Any]:
     path = args.get("path")
@@ -110,7 +161,8 @@ def create_file(args: Dict[str, Any]) -> Dict[str, Any]:
         )
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(str(content), encoding="utf-8")
-    return {"result": f"Created file: {p}", "path": str(p)}
+    verification = _verify_file_created(p, expected_content=str(content))
+    return {"result": f"Created file: {p}", "path": str(p), "verification": verification}
 
 
 @register("readFile")
@@ -124,7 +176,7 @@ def read_file(args: Dict[str, Any]) -> Dict[str, Any]:
     except UnicodeDecodeError:
         return {"result": f"(Binary file, {p.stat().st_size} bytes): {p}"}
     if len(text) > max_chars:
-        text = text[:max_chars] + f"\n…[truncated, {len(text) - max_chars} more chars]"
+        text = text[:max_chars] + f"\nâ€¦[truncated, {len(text) - max_chars} more chars]"
     return {"result": text, "path": str(p)}
 
 
