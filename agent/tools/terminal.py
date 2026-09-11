@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import stat
@@ -40,6 +40,64 @@ def _detect_package_manager() -> str:
     return "apt-get"
 
 
+
+def _verify_terminal_execution(command: str, output: str) -> Dict[str, Any]:
+    """Verify terminal command execution based on output evidence.
+
+    Since the current backend returns stdout+stderr as a single string
+    (exit code is not available), verification is based on output analysis.
+
+    Returns a dict with `status` (VERIFIED_SUCCESS, VERIFIED_FAILURE, UNKNOWN)
+    matching the S1 verification contract.
+
+    Limitation: This checks *execution evidence*, not *environmental outcome*.
+    A command may produce no errors but still fail to achieve its intended
+    side effect. Exit-code verification requires a backend change (see S2 ADR).
+    """
+    try:
+        observation: Dict[str, Any] = {
+            "command": command,
+            "output_length": len(output),
+            "has_output": bool(output.strip()),
+        }
+
+        # Check for common error indicators in the output
+        error_indicators = [
+            "is not recognized",
+            "command not found",
+            "access denied",
+            "permission denied",
+            "fatal error",
+            "the system cannot find",
+            "no such file or directory",
+        ]
+
+        output_lower = output.lower()
+        detected_errors = [e for e in error_indicators if e in output_lower]
+
+        if detected_errors:
+            observation["error_indicators"] = detected_errors
+            return {
+                "status": "VERIFIED_FAILURE",
+                "method": "terminal_output_check",
+                "detail": f"Command output contains error indicators: {', '.join(detected_errors)}",
+                "observation": observation,
+            }
+
+        return {
+            "status": "VERIFIED_SUCCESS",
+            "method": "terminal_output_check",
+            "detail": f"Command executed with no detected errors ({len(output)} chars output).",
+            "observation": observation,
+        }
+    except Exception as exc:
+        return {
+            "status": "UNKNOWN",
+            "method": "terminal_output_check",
+            "detail": f"Verification mechanism failed: {exc}",
+            "observation": {"command": command, "error": str(exc)},
+        }
+
 @register("runTerminalCommand")
 def run_terminal_command(args: Dict[str, Any]) -> Dict[str, Any]:
     command = args.get("command")
@@ -66,7 +124,8 @@ def run_terminal_command(args: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     result = get_backend().terminal.run_command(command)
-    return {"result": f"Executed command: {command}", "output": result}
+    verification = _verify_terminal_execution(command, result)
+    return {"result": f"Executed command: {command}", "output": result, "verification": verification}
 
 
 @register("provideSudoPassword")
