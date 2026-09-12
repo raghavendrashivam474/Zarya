@@ -154,3 +154,49 @@ async def handle_intent(request: Request):
         logger.error(f"Error processing intent: {e}", exc_info=True)
         return {"status": "ERROR", "response": str(e), "work_result": None}
 
+
+
+# ---------------------------------------------------------------------------
+# S9 Shefali Persona Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/persona/describe")
+def describe_persona():
+    """
+    Returns Shefali's persistent persona definition, grounded capabilities, and behavioral rules.
+    """
+    from agent.persona import ShefaliPersona
+    persona = ShefaliPersona()
+    return persona.describe()
+
+
+@app.post("/persona/interact")
+async def interact_persona(request: Request):
+    """
+    S9 Persona Interaction Boundary:
+    User Interaction -> Shefali Persona Layer -> S8 Natural Intent -> Zarya Runtime -> Shefali Response
+    """
+    try:
+        from agent.persona import ShefaliPersona
+        body = await request.json()
+        prompt = body.get("prompt", "")
+        authorized = body.get("authorized", False)
+        context_memory = body.get("context_memory", None)
+        
+        persona = ShefaliPersona()
+        result = persona.interact(
+            user_input=prompt,
+            authorized=authorized,
+            context_memory=context_memory,
+        )
+        return result.to_dict()
+    except Exception as e:
+        logger.error(f"Error in persona interact: {e}", exc_info=True)
+        return {
+            "persona_name": "Shefali",
+            "response_text": f"I encountered an unexpected internal error: {str(e)}",
+            "handled_by": "persona_direct",
+            "status": "ERROR",
+            "epistemic_certainty": "uncertain",
+            "suggested_actions": ["Check system logs", "Retry"],
+            "raw_intent_dict": None,
+        }
