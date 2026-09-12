@@ -1,12 +1,12 @@
-#!/bin/bash
-# ELYSIA — Start Script (Linux)
+﻿#!/bin/bash
+# ZARYA — Start Script (Linux)
 # Ensure we're in the project root
 cd "$(dirname "$0")" || exit 1
 
 # Kill any ghost background processes holding ports
 pkill -f "uvicorn agent.server:app" 2>/dev/null || true
 
-echo "Starting ELYSIA..."
+echo "Starting ZARYA..."
 echo "=========================================================="
 
 # 1. Start Python Agent Background Process
@@ -23,11 +23,11 @@ NODE_PID=$!
 
 echo ""
 echo "=========================================================="
-echo "ELYSIA is running!"
+echo "ZARYA is running!"
 echo "Open your browser at: http://localhost:3000"
 echo "Press Ctrl+C to stop everything."
 echo "=========================================================="
 
-trap "echo 'Stopping ELYSIA...'; kill $PYTHON_PID $NODE_PID 2>/dev/null; exit" SIGINT SIGTERM
+trap "echo 'Stopping ZARYA...'; kill $PYTHON_PID $NODE_PID 2>/dev/null; exit" SIGINT SIGTERM
 
 wait
