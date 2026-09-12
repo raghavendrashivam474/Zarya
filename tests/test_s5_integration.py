@@ -1,19 +1,19 @@
 """
-Zarya S5: Cross-Domain Closed-Loop Recovery Integration Tests.
+Zarya S5: Cross-Domain Closed-Loop Recovery Integration Tests (Hardened).
 
 Validates that real tool invocations across applications, files, and terminal:
 1. Include the additive "recovery" payload.
-2. Execute closed-loop recovery when eligible and authorized.
-3. Preserve the original failure reasoning without overwriting.
-4. Correctly transition from VERIFIED_FAILURE -> RECOVERED upon successful recovery.
+2. Execute closed-loop recovery for authorized application launch failures.
+3. Keep filesystem and terminal failures as NOT_ELIGIBLE for recovery in S5.
+4. Preserve the original failure reasoning without overwriting.
+5. Correctly transition from VERIFIED_FAILURE -> RECOVERED upon successful relaunch.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from agent.registry import TOOLS, load_all
 from agent.state import cache as state_cache
@@ -40,37 +40,22 @@ def test_create_file_integration_success_recovery_not_eligible(tmp_path: Path) -
     assert response["recovery"]["attempts"] == 0
 
 
-def test_create_file_closed_loop_recovery_success(tmp_path: Path) -> None:
-    """When createFile fails initially, closed-loop recovery succeeds on second attempt."""
+def test_create_file_failure_is_not_eligible_for_recovery_in_s5(tmp_path: Path) -> None:
+    """Filesystem creation failure must NOT trigger automatic recovery in S5 (deferred)."""
     state_cache.clear()
-    test_file = tmp_path / "s5_recovery_success.txt"
+    test_file = tmp_path / "s5_no_file_recovery.txt"
 
-    # We mock _verify_file_created so that:
-    # 1st call: returns VERIFIED_FAILURE (triggers recovery)
-    # 2nd call (inside recovery): returns VERIFIED_SUCCESS
-    call_count = 0
-
-    def mock_verify(p, expected_content=None):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            return {
-                "status": "VERIFIED_FAILURE",
-                "method": "filesystem_exists",
-                "detail": "File missing on first attempt.",
-                "observation": {"path": str(p), "exists": False},
-            }
-        return {
-            "status": "VERIFIED_SUCCESS",
+    with patch("agent.tools.files._verify_file_created") as mock_verify:
+        mock_verify.return_value = {
+            "status": "VERIFIED_FAILURE",
             "method": "filesystem_exists",
-            "detail": f"File verified on recovery: {p}",
-            "observation": {"path": str(p), "exists": True, "size_bytes": 16},
+            "detail": "File did not exist after creation.",
+            "observation": {"path": str(test_file), "exists": False},
         }
 
-    with patch("agent.tools.files._verify_file_created", side_effect=mock_verify):
         response = TOOLS["createFile"]({
             "path": str(test_file),
-            "content": "recovered data",
+            "content": "test data",
             "overwrite": True,
         })
 
@@ -79,14 +64,10 @@ def test_create_file_closed_loop_recovery_success(tmp_path: Path) -> None:
         assert response["failure"] is not None
         assert response["failure"]["category"] == "FILE_NOT_CREATED"
 
-        # Recovery payload confirms successful closed-loop recovery
+        # Recovery is NOT_ELIGIBLE per S5 policy
         assert "recovery" in response
-        recovery = response["recovery"]
-        assert recovery["status"] == RECOVERED
-        assert recovery["action"] == "REPEAT_FILE_CREATION"
-        assert recovery["authorized"] is True
-        assert recovery["attempts"] == 1
-        assert recovery["verification"]["status"] == "VERIFIED_SUCCESS"
+        assert response["recovery"]["status"] == NOT_ELIGIBLE
+        assert response["recovery"]["attempts"] == 0
 
 
 def test_open_application_closed_loop_recovery_success() -> None:

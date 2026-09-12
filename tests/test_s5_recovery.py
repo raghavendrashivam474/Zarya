@@ -1,17 +1,17 @@
 """
-Zarya S5: Closed-Loop Recovery Unit Tests.
+Zarya S5: Closed-Loop Recovery Unit Tests (Hardened).
 
 Validates:
-1. Eligibility gates (recoverable vs non-recoverable categories).
+1. Eligibility gates (only safe APPLICATION_NOT_OBSERVED is eligible; FILE_NOT_CREATED is deferred).
 2. Freshness rules (CURRENT required, STALE/REQUIRES_REFRESH/UNKNOWN rejected).
-3. Authorization checks (path security, app validation).
+3. Authorization checks (explicit policy decision in S5 recovery layer).
 4. Recursion protection and attempt bounds (exactly 1 bounded attempt).
 5. Epistemic preservation (UNKNOWN / INSUFFICIENT_EVIDENCE is never recovered).
 6. Result shape and status semantics (RECOVERED, FAILED, UNKNOWN, NOT_ELIGIBLE, NOT_ATTEMPTED).
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from agent.failure import (
     CAT_APP_NOT_OBSERVED,
@@ -54,11 +54,13 @@ class TestS5Eligibility(unittest.TestCase):
         eligible, reason = check_eligibility(failure, state)
         self.assertTrue(eligible)
 
-    def test_file_not_created_current_is_eligible(self):
+    def test_file_not_created_not_eligible_in_s5(self):
+        """FILE_NOT_CREATED is deferred in S5 to prevent destructive overwrite TOCTOU races."""
         failure = {"category": CAT_FILE_NOT_CREATED, "confidence": CONFIDENCE_HIGH}
         state = {"freshness": "CURRENT"}
         eligible, reason = check_eligibility(failure, state)
-        self.assertTrue(eligible)
+        self.assertFalse(eligible)
+        self.assertIn("No recovery policy", reason)
 
     def test_file_content_mismatch_not_eligible(self):
         failure = {"category": CAT_FILE_CONTENT_MISMATCH, "confidence": CONFIDENCE_HIGH}
@@ -88,7 +90,7 @@ class TestS5Eligibility(unittest.TestCase):
         self.assertIn("requires CURRENT freshness", reason)
 
     def test_requires_refresh_rejected(self):
-        failure = {"category": CAT_FILE_NOT_CREATED, "confidence": CONFIDENCE_HIGH}
+        failure = {"category": CAT_APP_NOT_OBSERVED, "confidence": CONFIDENCE_MEDIUM}
         state = {"freshness": "REQUIRES_REFRESH"}
         eligible, reason = check_eligibility(failure, state)
         self.assertFalse(eligible)
@@ -102,31 +104,23 @@ class TestS5Eligibility(unittest.TestCase):
 
 
 class TestS5Authorization(unittest.TestCase):
-    """Validate recovery authorization checks."""
+    """Validate explicit policy-level recovery authorization."""
 
-    def test_app_relaunch_authorized(self):
+    def test_app_relaunch_explicitly_authorized_by_policy(self):
         failure = {"category": CAT_APP_NOT_OBSERVED}
         authorized, reason = check_authorization(
             failure, "openApplication", {"name": "notepad"}
         )
         self.assertTrue(authorized)
+        self.assertIn("Authorized: Relaunching application", reason)
 
-    def test_file_safe_path_authorized(self):
-        failure = {"category": CAT_FILE_NOT_CREATED}
-        import os
-        safe_path = os.path.join(os.getcwd(), "test_recovery_file.txt")
-        authorized, reason = check_authorization(
-            failure, "createFile", {"path": safe_path, "content": "test"}
-        )
-        self.assertTrue(authorized)
-
-    def test_file_unsafe_path_rejected(self):
+    def test_unmapped_category_is_not_authorized(self):
         failure = {"category": CAT_FILE_NOT_CREATED}
         authorized, reason = check_authorization(
-            failure, "createFile", {"path": "C:\\Windows\\System32\\danger.txt"}
+            failure, "createFile", {"path": "test.txt"}
         )
         self.assertFalse(authorized)
-        self.assertIn("not authorized", reason)
+        self.assertIn("No recovery policy mapped", reason)
 
 
 class TestS5RecoveryExecution(unittest.TestCase):
@@ -247,6 +241,25 @@ class TestS5NegativeSafetyCases(unittest.TestCase):
             "confidence": CONFIDENCE_UNKNOWN,
         }
         verification = {"status": "UNKNOWN"}
+        state = {"domain": "filesystem", "freshness": "CURRENT"}
+
+        result = attempt_recovery(
+            failure=failure,
+            verification=verification,
+            state=state,
+            original_tool_name="createFile",
+            original_args={"path": "test.txt"},
+        )
+
+        self.assertEqual(result["status"], NOT_ELIGIBLE)
+        self.assertEqual(result["attempts"], 0)
+
+    def test_never_recovers_file_not_created_in_s5(self):
+        failure = {
+            "category": CAT_FILE_NOT_CREATED,
+            "confidence": CONFIDENCE_HIGH,
+        }
+        verification = {"status": "VERIFIED_FAILURE"}
         state = {"domain": "filesystem", "freshness": "CURRENT"}
 
         result = attempt_recovery(
