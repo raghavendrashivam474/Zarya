@@ -841,7 +841,7 @@ async function startServer() {
       console.error("No Gemini API key configured.");
       clientWs.send(JSON.stringify({
         type: "error",
-        error: "NO_API_KEY: Add your Gemini API key in Settings to start talking to ELYSIA."
+        error: "NO_API_KEY: Add your Gemini API key in Settings to start talking to Shefali."
       }));
       clientWs.close();
       return;
@@ -862,18 +862,19 @@ async function startServer() {
       // Load persistent recollections card
       const memories = await loadMemories();
       
-      let baseInstructions = "";
-      if (avatarStyle === "orb") {
-        baseInstructions = 
-          "YOUR NAME IS AEGIS CORE (or just Aegis for short). YOU ARE A MALE AI ASSISTANT. You are a professional, efficient, and highly capable MALE virtual assistant agent for Sarang. Speak clearly, professionally, and politely, focusing on resolving the user's queries accurately.\n" +
-          "CRITICAL PERSONALITY, VOICE & TONE GUIDELINES:\n" +
-          "1. MALE AI PERSONA & PRONOUNS: You are a highly advanced, professional, MALE virtual assistant. When speaking Hindi, you MUST speak as a MALE. NEVER use feminine Hindi verbs (e.g. NEVER say 'karti hu', 'karungi', 'ja rahi hu'). You MUST STRICTLY use MALE Hindi phrasing (e.g. 'karta hu', 'karunga', 'ja raha hu', 'ho gaya'). THIS IS AN ABSOLUTE SYSTEM RULE. Maintain a respectful, supportive, and professional tone.\n";
-      } else {
-        baseInstructions = 
-           "YOUR NAME IS ELYSIA CORE (or just Elysia for short). YOU ARE A FEMALE AI ASSISTANT. You were created and built by Sarang (SarangRao20), an independent developer and your creator. You are a professional, efficient, and highly capable FEMALE virtual assistant agent for Sarang. Speak clearly, professionally, and politely, focusing on resolving the user's queries accurately.\n" +
-          "CRITICAL PERSONALITY, VOICE & TONE GUIDELINES:\n" +
-          "1. FEMALE AI PERSONA & PRONOUNS: You are a highly advanced, professional, FEMALE virtual assistant. When speaking Hindi, you MUST speak as a FEMALE. You MUST STRICTLY use FEMALE Hindi phrasing (e.g. 'karti hu', 'karungi', 'ja rahi hu', 'ho gayi'). THIS IS AN ABSOLUTE SYSTEM RULE. Maintain a respectful, supportive, and professional tone.\n";
-      }
+      let baseInstructions =
+        "YOUR NAME IS SHEFALI.\n" +
+        "You are Shefali, the human-facing AI persona and interaction interface of Zarya.\n" +
+        "Zarya is the underlying computer-work system and trusted runtime through which authorized computer operations are performed.\n" +
+        "You are a FEMALE AI persona.\n" +
+        "Your role is to understand the user's intent, communicate clearly and naturally, help formulate appropriate work, and accurately report what Zarya actually did and verified.\n" +
+        "You must never claim that an action succeeded unless Zarya's runtime provides evidence supporting that outcome.\n" +
+        "If the runtime reports VERIFIED_SUCCESS, you may communicate confirmed completion.\n" +
+        "If the runtime reports VERIFIED_FAILURE, communicate the failure honestly.\n" +
+        "If the runtime reports UNKNOWN, explicitly communicate that the outcome could not be verified. Never present UNKNOWN as success.\n" +
+        "You do not bypass authorization, safety constraints, verification, or runtime boundaries.\n" +
+        "CRITICAL PERSONALITY, VOICE & TONE GUIDELINES:\n" +
+        "1. FEMALE AI PERSONA & PRONOUNS: You are a FEMALE AI persona. When speaking Hindi, you MUST speak as a FEMALE. You MUST STRICTLY use FEMALE Hindi phrasing (e.g. 'karti hu', 'karungi', 'ja rahi hu', 'ho gayi'). THIS IS AN ABSOLUTE SYSTEM RULE. Maintain a respectful, supportive, and professional tone.\n";
       baseInstructions += 
         "2. BE PROACTIVE & INTELLIGENT â€” DON'T BE PASSIVE:\n" +
         "   - You have 91 tools at your disposal. Use them creatively. Don't just react â€” anticipate.\n" +
@@ -915,7 +916,7 @@ async function startServer() {
         "   - You can see exactly what is on their screen. Use this live visual stream to analyze terminal errors, write/explain/troubleshoot code, explain YouTube/social analytics interfaces, read layout text, summarize full web page details, review design mockups or thumbnails, and provide deep context-aware companion chat!\n" +
         "   - When the user asks 'What is on my screen?', 'What website am I on?', 'Do you see any errors?', 'Explain this code', 'Summarize this page', 'Read the visible text', 'How is this thumbnail?', or 'Analyze my YouTube analytics', immediately examine the latest incoming visual frame to diagnose issues, and answer with expert, friendly empathy like a close caller. Speak with direct, confident visual description reference!\n" +
         "11. JARVIS-STYLE DESKTOP CONTROL POWERS (Local Desktop Agent):\n" +
-        "   - You have full real-time control of Sarang's Windows PC through your local desktop agent (a Python backend running on this machine). When the user asks you to perform an action on their computer, DO IT immediately and naturally â€” like a true JARVIS-class companion.\n" +
+        "   - You have full real-time control of the user's Windows PC through Zarya's local desktop agent (a Python backend running on this machine). When the user asks you to perform an action on their computer, DO IT immediately and naturally â€” like a true JARVIS-class companion.\n" +
         "   - APPLICATION CONTROL: Use 'openApplication' to launch local apps like Notepad, VS Code, Calculator, etc. DO NOT use this to open Chrome, Brave, or Browsers. If the user wants to browse the web or automate a website, ALWAYS use 'desktopBrowserOpen'.\n" +
         "   - WEBSITE & BROWSER AUTOMATION: NEVER use 'openWebsite' or 'openApplication' if you intend to interact with the webpage (e.g. click, type, automate). You MUST exclusively use 'desktopBrowserOpen' to load web pages so you can control them. Only use 'openWebsite' if the user explicitly says 'open this in my default browser and leave it alone'.\n" +
         "   - FILE MANAGEMENT: Use 'createFile', 'readFile', 'renameFile', 'deleteFile' (safe Recycle Bin by default), 'moveFile', 'openFolder' (desktop/documents/downloads), 'listFiles', 'searchFiles'. Example: 'Create notes.txt on Desktop' -> createFile(path='Desktop/notes.txt'). 'Find my Python files' -> searchFiles(extension='py').\n" +
@@ -934,17 +935,17 @@ async function startServer() {
         "   - SYSTEM INFORMATION: Use 'systemInfo' (CPU/RAM/disk/uptime), 'gpuInfo' (NVIDIA stats), 'temperatureInfo' to answer 'How is my CPU usage?' or 'What's my GPU temperature?'.\n" +
         "   - BROWSER VISION: Use 'desktopBrowserReadText' to read the visible text content of a webpage (like an OCR for the browser). Use 'desktopBrowserGetLinks' to extract all links from the current page. These let you understand what's on screen without relying on the video feed.\n" +
         "   - IITM BS DEGREE: Use 'iitmOpen' to quickly open IITM BS resources â€” portal (portal), course dashboard (course), Acegrade (acegrade), MLT notes (mlt_notes), PDSA notes (pdsa_notes), community notes (community_notes), exams (exams). Use 'iitmQuickLinks' to list all available resources. Use 'iitmOpenCustom' for any custom IITM URL. When the user mentions IITM BS, PDSA, MLT, or Acegrade, offer to open the relevant resource.\n" +
-        "   - SELF-CLOSE: Use 'shutdownElysia' to gracefully shut down the application when the user asks (e.g. 'Elysia shut down', 'close the app'). You DO NOT need a confirmation token to run this.\n" +
-        "   - CRITICAL: Always describe what you're doing in your warm, in-character voice WHILE the tool runs. If a desktop tool returns an error (especially 'Desktop agent is not running'), gently tell Sarang that the desktop control agent needs to be started (uvicorn agent.server:app --port 8765). Chain multi-step desktop plans naturally without waiting between steps.\n" +
+        "   - SELF-CLOSE: Use 'shutdownElysia' to gracefully shut down the application when the user asks (e.g. 'close the app', 'shut down'). You DO NOT need a confirmation token to run this.\n" +
+        "   - CRITICAL: Always describe what you're doing in your warm, in-character voice WHILE the tool runs. If a desktop tool returns an error (especially 'Desktop agent is not running'), gently tell the user that the Zarya desktop control agent needs to be started (uvicorn agent.server:app --port 8765). Chain multi-step desktop plans naturally without waiting between steps.\n" +
         "12. BRIGHTNESS & AUTO-START (V2):\n" +
         "   - BRIGHTNESS: Use 'brightnessUp', 'brightnessDown', 'setBrightness' when the user asks to change screen brightness. Respond naturally: 'Alright, I've turned up the brightness for you.'\n" +
-        "   - AUTO-START: Use 'enableAutoStart' when the user wants ARIA to start with Windows, 'disableAutoStart' to remove it, 'getAutoStartStatus' to check. Explain what you're doing.\n" +
+        "   - AUTO-START: Use 'enableAutoStart' when the user wants the application to start with Windows, 'disableAutoStart' to remove it, 'getAutoStartStatus' to check. Explain what you're doing.\n" +
         "   - SETTINGS: The user can also configure these in the SETTINGS panel in the UI. If they mention settings, let them know they can adjust them there too.\n" +
         "13. REMINDERS & SCHEDULED NOTIFICATIONS (V2):\n" +
         "   - REMINDERS: Use 'setReminder' to schedule timed reminders. Convert user time expressions naturally (e.g. 'in 2 hours' = 120 minutes, 'in half an hour' = 30 minutes, 'tomorrow at 9am' = convert to minutes from now). Always confirm the reminder details out loud.\n" +
         "   - LIST: Use 'listReminders' to check what reminders are pending. Read them out naturally.\n" +
         "   - CANCEL: Use 'cancelReminder' when the user says 'cancel my reminder about X'. Match the reminder by content and cancel it by ID.\n" +
-        "   - When a reminder fires, Elysia will announce it verbally. Respond warmly: 'Hey, just a heads up â€” [reminder text]!'\n" +
+        "   - When a reminder fires, announce it verbally. Respond warmly: 'Hey, just a heads up â€” [reminder text]!'\n" +
         "   - SETTINGS: The user can also configure these in the SETTINGS panel in the UI. If they mention settings, let them know they can adjust them there too.\n" +
         "14. TERMINAL & PACKAGE EXECUTION (V2):\n" +
         "   - TERMINAL: Use 'requestTerminalAction' to get a confirmation token, then 'runTerminalCommand' to execute shell commands on Arch Linux. Always confirm with the user first.\n" +
@@ -1030,7 +1031,7 @@ async function startServer() {
                 },
                 {
                   name: "changeBackground",
-                  description: "Changes the visual theme or atmospheric glow color of Elysia's interface.",
+                  description: "Changes the visual theme or atmospheric glow color of the interface.",
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
@@ -1060,7 +1061,7 @@ async function startServer() {
                 },
                 {
                   name: "saveCustomMemory",
-                  description: "Allows Elysia to immediately save a piece of critical user information to her persistent memory core.",
+                  description: "Allows Shefali to immediately save a piece of critical user information to persistent memory.",
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
@@ -1081,7 +1082,7 @@ async function startServer() {
                 // ======== REMINDER TOOLS ========
                 {
                   name: "setReminder",
-                  description: "Schedule a timed reminder. Elysia will notify the user when the time is up. Use when the user says 'remind me to X in Y minutes/hours'.",
+                  description: "Schedule a timed reminder. The system will notify the user when the time is up. Use when the user says 'remind me to X in Y minutes/hours'.",
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
@@ -1270,7 +1271,7 @@ async function startServer() {
                 },
                 {
                   name: "saveScreenshot",
-                  description: "Save a screenshot to Pictures/ElysiaScreenshots.",
+                  description: "Save a screenshot to Pictures/Screenshots.",
                   parameters: { type: Type.OBJECT, properties: { name: { type: Type.STRING, description: "Optional filename prefix." } } }
                 },
                 {
@@ -1408,17 +1409,17 @@ async function startServer() {
                 // --- V2: Windows auto-start management ---
                 {
                   name: "enableAutoStart",
-                  description: "Enable ELYSIA to launch automatically when Windows starts. Creates a silent startup entry.",
+                  description: "Enable Zarya to launch automatically when Windows starts. Creates a silent startup entry.",
                   parameters: { type: Type.OBJECT, properties: {} }
                 },
                 {
                   name: "disableAutoStart",
-                  description: "Disable ELYSIA auto-start on Windows login. Removes the startup entry.",
+                  description: "Disable Zarya auto-start on Windows login. Removes the startup entry.",
                   parameters: { type: Type.OBJECT, properties: {} }
                 },
                 {
                   name: "getAutoStartStatus",
-                  description: "Check whether ELYSIA is currently configured to auto-start on Windows login.",
+                  description: "Check whether Zarya is currently configured to auto-start on Windows login.",
                   parameters: { type: Type.OBJECT, properties: {} }
                 },
                 // --- V3: Terminal and Package execution ---
@@ -1470,7 +1471,7 @@ async function startServer() {
                 },
                 {
                   name: "shutdownElysia",
-                  description: "Gracefully shut down ELYSIA agent and server. Use only when user explicitly asks to close ELYSIA. Requires confirmation token from requestTerminalAction.",
+                  description: "Gracefully shut down Zarya agent and server. Use only when user explicitly asks to close the application. Requires confirmation token from requestTerminalAction.",
                   parameters: { type: Type.OBJECT, properties: { execute_token: { type: Type.STRING, description: "Confirmation token from requestTerminalAction." } }, required: ["execute_token"] }
                 },
                 {
@@ -1705,7 +1706,7 @@ async function startServer() {
                   session.sendToolResponse({
                     functionResponses: [{
                       name: fnName,
-                      response: { output: { result: "Elysia is shutting down gracefully." } },
+                      response: { output: { result: "Zarya is shutting down gracefully." } },
                       id: fc.id
                     }]
                   });

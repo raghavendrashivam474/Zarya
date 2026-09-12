@@ -1,0 +1,268 @@
+﻿.env.example:1:∩╗┐# Zarya / Elysia Configuration
+.env.local:1:# ΓöÇΓöÇ ELYSIA Environment Variables Template ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+.env.local:16:ELYSIA_BROWSER_MODE=managed
+.env.local:19:# ELYSIA_AGENT_HOST=127.0.0.1
+.env.local:20:# ELYSIA_AGENT_PORT=8765
+.env.local:23:# ELYSIA_DATA_DIR=~/.elysia
+Agents.md:4:While Elysia's mind lives in the cloud (via Google Gemini) and her body lives in the React overlay UI, her **hands** are the Python Desktop Agent (`agent/`). 
+Architecture.md:4:Elysia AI operates on a client-server-agent architecture to separate the UI, the AI reasoning engine, and the dangerous OS-level capabilities.
+CONTRIBUTING.md:1:# Contributing to ELYSIA
+CONTRIBUTING.md:34:Open an issue at [github.com/SarangRao20/Elysia-AI/issues](https://github.com/SarangRao20/Elysia-AI/issues) with:
+Memory.md:4:- **Project Goal:** Build a fully functional, hyper-premium AI desktop assistant (Elysia).
+PRD.md:4:**Name:** Elysia AI
+PRD.md:5:**Description:** An omnipresent, highly interactive, and expressive AI desktop assistant designed to provide an immersive, human-like pair-programming and OS-management experience. Elysia integrates seamlessly into the user's workflow with deep OS-level capabilities.
+README.md:1:# ELYSIA ΓÇö AI Voice Assistant with Holographic Interface
+README.md:4:  <video src="https://github.com/SarangRao20/Elysia-AI/raw/main/demo.mp4" controls="controls" muted="muted" autoplay="autoplay" width="100%"></video>
+README.md:7:A real-time, voice-to-voice holographic AI companion desktop assistant built on the **Google Gemini Live API**. ELYSIA combines a holographic video character, persistent memory, a reminder system, a full desktop automation agent, and an in-app browser ΓÇö all running locally with a 3-process architecture.
+README.md:37:| <img src="assets/chatgpt.png" alt="ELYSIAΓÇæAI architecture" width="460"> | <img src="assets/frame.jpg" alt="Anime girl frame" width="460"> |
+README.md:41:ELYSIA runs as **3 separate processes** that communicate over HTTP/WebSocket:
+README.md:80:- Web Speech API ΓÇö wake word detection ("Hey Elysia")
+README.md:116:elysia-ai-assistant/
+README.md:123:Γö£ΓöÇΓöÇ start_elysia.sh             # Launch script (Python agent + Node server)
+README.md:151:Γöé   Γöé   ΓööΓöÇΓöÇ wakeWord.ts        # "Hey Elysia" wake word detection via Web Speech API
+README.md:155:Γöé       Γö£ΓöÇΓöÇ ElysiaCoreVisualizer.tsx # Canvas-based holographic visualizer + video character
+README.md:215:- Uses the Web Speech API to listen for "Hey Elysia"
+README.md:239:ELYSIA uses **no traditional database**. All data is stored as JSON files in the data directory (`~/.elysia/` by default, configurable via `ELYSIA_DATA_DIR`):
+README.md:265:- Injects a callback into the active Gemini session so ELYSIA can remind you verbally
+README.md:275:- System prompt establishes ELYSIA's personality and context
+README.md:279:ELYSIA registers **~113 function declarations** with Gemini, spanning:
+README.md:314:| `pc` | `volumeUp/Down`, `setVolume`, `brightnessUp/Down`, `setBrightness`, `muteToggle`, `executePowerAction`, `shutdownElysia` | System hardware controls |
+README.md:361:| `ElysiaCoreVisualizer` | Canvas-based holographic visualizer with particle rings, plasma core, emotion glow, mouse tracking. Renders the video character in idle/thinking/talking states. |
+README.md:375:- **Wake Word**: Web Speech API continuous recognition, triggers on "Hey Elysia" detection
+README.md:417:| `wakeWord` | "Hey Elysia", custom string, or disabled | "Hey Elysia" |
+README.md:461:bash start_elysia.sh
+README.md:483:| `bash start_elysia.sh` | Launches both Python agent + Node.js server |
+README.md:495:| `ELYSIA_BROWSER_MODE` | Browser automation mode: `managed` or `cdp` | `managed` |
+README.md:496:| `ELYSIA_CDP_URL` | CDP WebSocket URL (only used in CDP mode) | `http://127.0.0.1:9222` |
+README.md:497:| `ELYSIA_DATA_DIR` | Custom data directory path | `~/.elysia/` |
+README.md:498:| `ELYSIA_AGENT_HOST` | Desktop agent host | `127.0.0.1` |
+README.md:499:| `ELYSIA_AGENT_PORT` | Desktop agent port | `8765` |
+README.md:535:- Wake word detection ("Hey Elysia")
+ZARYA.md:4:**Upstream:** ELYSIA v1 (see \README.md\ for inherited docs)
+ZARYA.md:7:A working desktop-agent baseline inherited from ELYSIA, being evolved
+ZARYA.md:17:\docs/decisions/0001-adopt-elysia-as-zarya-baseline.md\.
+agent/README.md:1:# ELYSIA Desktop Control Agent
+agent/README.md:3:A local Python FastAPI service that gives ELYSIA **JARVIS-style desktop control** ΓÇö
+agent/README.md:8:> **This agent does NOT modify ELYSIA's UI, personality, or chat system.** It is a pure
+agent/README.md:9:> backend tool layer that ELYSIA's existing Node bridge (`server.ts`) calls over HTTP.
+agent/README.md:28:cd path/to/elysia-ai
+agent/README.md:55:The agent binds to `127.0.0.1:8765`. Then start ELYSIA normally with `npm run dev`.
+agent/README.md:61:Set via `ELYSIA_BROWSER_MODE` env var (in `.env`):
+agent/README.md:95:**Setup**: Place `credentials.json` (Google Cloud OAuth desktop app credentials) in `~/.elysia/google_oauth/`. First use opens a browser for consent. Tokens cached in `~/.elysia/google_oauth/token.json`. If credentials are missing, tools return a setup error.
+agent/README.md:261:| `shutdownElysia` | Gracefully stop the application |
+agent/README.md:279:ELYSIA voice chat ΓåÆ Gemini Live API ΓåÆ server.ts ΓåÆ HTTP POST ΓåÆ agent.server (FastAPI)
+agent/__init__.py:2:ELYSIA Desktop Control Agent.
+agent/context.py:49:log = logging.getLogger("elysia.context")
+agent/registry.py:2:ELYSIA Desktop Control Agent ΓÇö Central tool registry.
+agent/registry.py:77:# The set of all tool names ELYSIA may route to this agent.
+agent/registry.py:166:    "shutdownElysia",
+agent/requirements.txt:1:# ELYSIA Desktop Control Agent ΓÇö Python dependencies
+agent/server.py:36:log = logging.getLogger("elysia.desktop")
+agent/server.py:59:    description="JARVIS-style desktop automation backend for ELYSIA.",
+agent/server.py:121:    host = os.environ.get("ELYSIA_AGENT_HOST", "127.0.0.1")
+agent/server.py:122:    port = int(os.environ.get("ELYSIA_AGENT_PORT", "8765"))
+agent/tools/browser.py:75:    return os.environ.get("ZARYA_BROWSER_MODE", os.environ.get("ELYSIA_BROWSER_MODE", "managed")).strip().lower()
+agent/tools/browser.py:82:    old_dir = os.path.join(home, ".elysia_browser_data")
+agent/tools/browser.py:117:    cdp_url = os.environ.get("ZARYA_CDP_URL", os.environ.get("ELYSIA_CDP_URL", "http://127.0.0.1:9222"))
+agent/tools/camera.py:92:        proc = _launch_hyprland_float(["mpv", f"--input-ipc-server=/tmp/elysia_cam.sock", device])
+agent/tools/camera.py:116:        subprocess.run(["pkill", "-f", "--", "/tmp/elysia_cam.sock"], check=False)
+agent/tools/confirmation.py:5:        and tells ELYSIA (via the result string) to ask the user to confirm.
+agent/tools/confirmation.py:23:# Friendly human labels so ELYSIA's prompt-to-confirm reads naturally.
+agent/tools/confirmation.py:46:    ELYSIA calls this first; the returned message instructs her to ask the
+agent/tools/confirmation.py:81:    ELYSIA calls this first; the returned message instructs her to ask the
+agent/tools/files.py:94:        f"Path '{p}' is outside ELYSIA's safe folders (Desktop, Documents, "
+agent/tools/google.py:9:  5. Place at: ~/.elysia/google_oauth/credentials.json
+agent/tools/google.py:11:  7. Token saved to ~/.elysia/google_oauth/token.json (auto-refreshed)
+agent/tools/google.py:37:_OAUTH_DIR = Path.home() / ".elysia" / "google_oauth"
+agent/tools/google.py:60:            "4. Download credentials.json and save to ~/.elysia/google_oauth/"
+agent/tools/pc.py:243:@register("shutdownElysia")
+agent/tools/pc.py:244:def shutdown_elysia(args: Dict[str, Any]) -> Dict[str, Any]:
+agent/tools/pc.py:255:    return {"result": "ELYSIA is shutting down. Goodbye!"}
+agent/tools/pc.py:267:    "shutdown_elysia",
+agent/tools/screenshot.py:21:SCREENSHOTS_DIR = Path(os.path.expanduser("~")) / "Pictures" / "ElysiaScreenshots"
+agent/tools/startup.py:2:Windows auto-start management for ELYSIA (V2).
+agent/tools/startup.py:5:    HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Elysia
+agent/tools/startup.py:6:which points at the silent launcher batch file (start-elysia-silent.bat) located
+agent/tools/startup.py:28:VALUE_NAME = "Elysia"
+agent/tools/startup.py:29:SILENT_LAUNCHER = "start-elysia-silent.bat"
+agent/tools/startup.py:44:    Make sure start-elysia-silent.bat exists in the project root.
+agent/tools/startup.py:143:        "result": "Auto-start enabled. Elysia will launch silently on next Windows login.",
+agent/tools/startup.py:171:        "result": "Auto-start disabled. Elysia will no longer launch on login.",
+agent/tools/startup.py:185:            "Auto-start is ENABLED. Elysia launches on Windows login."
+agent/work.py:19:log = logging.getLogger("elysia.work")
+docs/architecture/existing-system.md:1:∩╗┐# Existing System Architecture (Inherited from ELYSIA)
+docs/baseline/directory-tree.txt:58:    ElysiaCoreVisualizer.tsx
+docs/baseline/directory-tree.txt:98:start_elysia.bat
+docs/baseline/directory-tree.txt:99:start_elysia.sh
+docs/baseline/file-inventory.txt:70:src/components/ElysiaCoreVisualizer.tsx
+docs/baseline/file-inventory.txt:85:start_elysia.bat
+docs/baseline/file-inventory.txt:86:start_elysia.sh
+docs/decisions/0001-adopt-elysia-as-zarya-baseline.md:1:∩╗┐# ADR 0001 ΓÇö Adopt ELYSIA v1 as Zarya S0 baseline
+docs/decisions/0001-adopt-elysia-as-zarya-baseline.md:8:desktop-agent (ELYSIA v1) provides most of the required capabilities.
+docs/decisions/0001-adopt-elysia-as-zarya-baseline.md:11:Adopt the ELYSIA repository as the Zarya S0 baseline via fork.
+docs/research/s8-natural-intent-limitations.md:65:- User-facing server startup strings transitioned from ELYSIA -> Zarya.
+docs/research/s8-natural-intent-limitations.md:67:- Full ELYSIA -> Zarya migration is a separate task (not part of S8 scope).
+docs/research/s9-identity-audit.md:1:∩╗┐# S9 Identity Taxonomy Audit: ELYSIA -> Zarya -> Shefali
+docs/research/s9-identity-audit.md:29:       Γöé                    ELYSIA (Legacy)                      Γöé
+docs/research/s9-identity-audit.md:31:       Γöé   - Backward-compatible env vars (ELYSIA_AGENT_PORT)    Γöé
+docs/research/s9-identity-audit.md:38:agent/server.py    ELYSIA_AGENT_PORT    Legacy Compatibility    Preserved for non-breaking local daemon launch
+docs/research/s9-identity-audit.md:39:server.ts / UI    Elysia / Zarya    User-Facing UI    Assistant persona labelled as Shefali (Zarya)
+docs/research/s9-identity-audit.md:41:start_elysia.*    elysia    Legacy Scripts    Retained for historical build script compatibility
+docs/research/s9-shefali-persona-investigation.md:80:ELYSIA -> Zarya -> Shefali Identity Taxonomy
+docs/research/s9-shefali-persona-investigation.md:84:Internal Legacy Code    Legacy scripts (start_elysia.*), variable names    Document in migration inventory; preserve compatibility if unlinked
+local-agent.js:2: * Elysia Playwright Local Agent Server
+local-agent.js:3: * Run this locally on your machine to grant Elysia real control over your browser!
+local-agent.js:12: * This server binds to port 3001 on localhost, permitting Elysia's web portal to issue
+local-agent.js:318:        throw new Error(`Directive '${type}' not recognized by Elysia's local Playwright engine.`);
+local-agent.js:330:  console.log(`≡ƒÜÇ Elysia Playwright Local Agent Server Running!`);
+metadata.json:2:  "name": "Elysia AI Assistant",
+metadata.json:3:  "description": "A real-time, voice-to-voice holographic companion named Elysia, using the Gemini Live API for low-latency audio stream processing and visual holographic projections.",
+package-lock.json:2:  "name": "elysia",
+package-lock.json:8:      "name": "elysia",
+package.json:2:  "name": "elysia",
+package.json:3:  "productName": "ELYSIA",
+package.json:6:  "homepage": "https://github.com/elysia",
+run_agent.py:2:Elysia Desktop Control Agent ΓÇö frozen entrypoint.
+run_agent.py:4:This is the script PyInstaller freezes into `Elysia-agent.exe`. It runs the
+run_agent.py:9:Run (frozen):   Elysia-agent.exe
+run_agent.py:12:    Elysia_AGENT_HOST   default 127.0.0.1
+run_agent.py:13:    Elysia_AGENT_PORT   default 8765
+run_agent.py:14:    Elysia_DATA_DIR     where logs/ is written (default: cwd)
+run_agent.py:26:    data = os.environ.get("Elysia_DATA_DIR") or os.getcwd()
+run_agent.py:56:    log = logging.getLogger("Elysia.agent.boot")
+run_agent.py:64:    host = os.environ.get("Elysia_AGENT_HOST", "127.0.0.1")
+run_agent.py:65:    port = int(os.environ.get("Elysia_AGENT_PORT", "8765"))
+run_agent.py:67:    log.info("Starting Elysia agent (frozen=%s) on %s:%d", frozen, host, port)
+server.ts:36:// ELYSIA V2 ├óΓé¼ΓÇ¥ Logging (Feature 7).
+server.ts:56:// ELYSIA Desktop Control Agent ├óΓé¼ΓÇ¥ HTTP bridge to the Python FastAPI backend.
+server.ts:104:  "shutdownElysia",
+server.ts:140: * even if ELYSIA's node process is killed.
+server.ts:145:    ELYSIA_AGENT_HOST: "127.0.0.1",
+server.ts:146:    ELYSIA_AGENT_PORT: "8765",
+server.ts:150:  // its own Python runtime. Set by the Electron main process via ELYSIA_AGENT_EXE.
+server.ts:151:  const frozenExe = process.env.ELYSIA_AGENT_EXE;
+server.ts:173:    process.env.ELYSIA_PYTHON,
+server.ts:187:    logError("AGENT_SPAWN_NO_RUNTIME: neither ELYSIA_AGENT_EXE nor Python available");
+server.ts:600:        return res.status(400).send("Elysia Web Proxy Error: Missing target 'url' parameter");
+server.ts:607:        return res.status(400).send(`Elysia Web Proxy Error: Relative paths are not supported directly (${targetUrl}).`);
+server.ts:620:        return res.status(400).send(`Elysia Web Proxy Error: Invalid URL specified: "${urlParam}". Make sure you enter a valid domain name.`);
+server.ts:635:        return res.status(502).send(`Elysia Web Proxy Error: Unable to fetch the website "${targetUrl}". The site might be offline, or the URL address is spelled incorrectly. Details: ${fetchErr.message}`);
+server.ts:639:        return res.status(response.status).send(`Elysia Web Proxy Error: Failed loading remote website. Server returned status: ${response.status} (${response.statusText})`);
+server.ts:701:            window.alert = function(msg) { console.log("[Elysia Browser alert bypassed]:", msg); };
+server.ts:702:            window.confirm = function(msg) { console.log("[Elysia Browser confirm bypassed]:", msg); return true; };
+server.ts:719:      res.setHeader("X-Elysia-Proxied", "true");
+server.ts:728:      res.status(500).send(`Elysia Web Proxy Error: Internal error occurred proxying URL "${targetUrl || "unknown"}". Details: ${e.message}`);
+server.ts:844:        error: "NO_API_KEY: Add your Gemini API key in Settings to start talking to ELYSIA."
+server.ts:873:           "YOUR NAME IS ELYSIA CORE (or just Elysia for short). YOU ARE A FEMALE AI ASSISTANT. You were created and built by Sarang (SarangRao20), an independent developer and your creator. You are a professional, efficient, and highly capable FEMALE virtual assistant agent for Sarang. Speak clearly, professionally, and politely, focusing on resolving the user's queries accurately.\n" +
+server.ts:937:        "   - SELF-CLOSE: Use 'shutdownElysia' to gracefully shut down the application when the user asks (e.g. 'Elysia shut down', 'close the app'). You DO NOT need a confirmation token to run this.\n" +
+server.ts:947:        "   - When a reminder fires, Elysia will announce it verbally. Respond warmly: 'Hey, just a heads up ├óΓé¼ΓÇ¥ [reminder text]!'\n" +
+server.ts:962:        "   - FIRST-TIME SETUP: If Google tools fail, tell the user: 'Pehle Google Cloud Console mein project banao, Calendar/Gmail/Tasks APIs enable karo, credentials.json download karo, aur ~/.elysia/google_oauth/ mein rakho. Phir dobara try karo.'\n" +
+server.ts:1033:                  description: "Changes the visual theme or atmospheric glow color of Elysia's interface.",
+server.ts:1063:                  description: "Allows Elysia to immediately save a piece of critical user information to her persistent memory core.",
+server.ts:1084:                  description: "Schedule a timed reminder. Elysia will notify the user when the time is up. Use when the user says 'remind me to X in Y minutes/hours'.",
+server.ts:1273:                  description: "Save a screenshot to Pictures/ElysiaScreenshots.",
+server.ts:1411:                  description: "Enable ELYSIA to launch automatically when Windows starts. Creates a silent startup entry.",
+server.ts:1416:                  description: "Disable ELYSIA auto-start on Windows login. Removes the startup entry.",
+server.ts:1421:                  description: "Check whether ELYSIA is currently configured to auto-start on Windows login.",
+server.ts:1472:                  name: "shutdownElysia",
+server.ts:1473:                  description: "Gracefully shut down ELYSIA agent and server. Use only when user explicitly asks to close ELYSIA. Requires confirmation token from requestTerminalAction.",
+server.ts:1571:              console.log("[Elysia Interrupted!]");
+server.ts:1703:                } else if (fnName === "shutdownElysia") {
+server.ts:1708:                      response: { output: { result: "Elysia is shutting down gracefully." } },
+server.ts:1853:    logStartup(`ELYSIA V2 server started on http://localhost:${PORT}`);
+server_memory.ts:37:      "=== ELYSIA MEMORY CORE ===\n" +
+server_memory.ts:52:    "=== ELYSIA PERSISTENT MEMORY CORE (RECOLLECTIONS) ===\n" +
+server_memory.ts:114:    const dialogueContext = dialogueHistory.map(line => `${line.role === "user" ? "User" : "Elysia"}: ${line.text}`).join("\n");
+server_memory.ts:116:    const prompt = `You are Elysia's deep cognitive recollection engine. Your task is to analyze the recent conversation piece against previous persistent memories, and output precise update transactions.
+server_memory.ts:132:  - "REMOVE": If a memory was explicitly disproven or the user directly asked Elysia to forget it.
+server_memory.ts:133:- TEXT STYLE: Express the memories as clean, concise, third-person declarative summaries (e.g., 'The user is building a startup named Elysia.', 'The user loves playing GTA 6.', 'The user enjoys technical and fast-paced styling explanations.'). Do not include conversational filler, quotes, or timestamps.
+server_paths.ts:2: * ELYSIA ΓÇö path & secret resolution.
+server_paths.ts:7: * packaged Electron app launches the backend it sets ELYSIA_DATA_DIR to a
+server_paths.ts:8: * writable folder under %APPDATA%\ELYSIA, because the install directory
+server_paths.ts:20:export const DATA_DIR: string = process.env.ELYSIA_DATA_DIR || process.cwd();
+src/App.tsx:2:import { LiveState, ElysiaAudioSession } from "./lib/audio";
+src/App.tsx:3:import { ElysiaCoreVisualizer, type ElysiaEmotion } from "./components/ElysiaCoreVisualizer";
+src/App.tsx:4:import { type ElysiaSettings, saveSettings, loadSettings } from "./lib/settingsStore";
+src/App.tsx:6:import { ElysiaWakeWordDetector } from "./lib/wakeWord";
+src/App.tsx:34:  const [settings, setSettings] = useState<ElysiaSettings>(loadSettings());
+src/App.tsx:229:  const [activeEmotion, setActiveEmotion] = useState<ElysiaEmotion>("idle");
+src/App.tsx:234:  const detectEmotionFromText = (text: string): ElysiaEmotion => {
+src/App.tsx:253:  // Elysia Autopilot system controller state
+src/App.tsx:261:  // Elysia recollections database core state
+src/App.tsx:277:  const wakeDetectorRef = useRef<ElysiaWakeWordDetector | null>(null);
+src/App.tsx:284:    const det = new ElysiaWakeWordDetector();
+src/App.tsx:300:          // When wake word fires, stop detector and connect ELYSIA.
+src/App.tsx:311:  const handleSettingsChange = (patch: Partial<ElysiaSettings>) => {
+src/App.tsx:316:  const sessionRef = useRef<ElysiaAudioSession | null>(null);
+src/App.tsx:362:    sessionRef.current = new ElysiaAudioSession({
+src/App.tsx:518:      id="elysia-holographic-desktop"
+src/App.tsx:524:      {/* FULL VIEWPORT HOLOGRAPHIC STAGE: Elysia materializes across the entire screen */}
+src/App.tsx:526:        <ElysiaCoreVisualizer
+src/App.tsx:660:                Elysia is equipped with dynamic visual modules and browser projectors. Here are clever triggers to try speaking aloud:
+src/App.tsx:664:                  ΓÜí &quot;Elysia, change atmosphere of your core to crimson&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Shifts theme color background</span>
+src/App.tsx:809:          title={state === "disconnected" ? "Awake Elysia" : "Sleep core"}
+src/components/ApiKeyGate.tsx:4: * ELYSIA ships without any API key. On launch we ask the backend whether a key
+src/components/ApiKeyGate.tsx:75:          <span className="text-sm tracking-wide">Starting ELYSIAΓÇª</span>
+src/components/ApiKeyGate.tsx:86:            <h1 className="text-xl font-semibold tracking-tight">Welcome to ELYSIA</h1>
+src/components/ApiKeyGate.tsx:88:              ELYSIA runs on your own Google Gemini API key. Paste it below to get
+src/components/BrowserAgent.tsx:272:        console.log("[Elysia Browser] Same-origin child iframe navigated to:", event.data.url);
+src/components/BrowserAgent.tsx:285:    console.log(`[Elysia Browser Hub] Automated Voice Trigger: ${type}`, args);
+src/components/BrowserAgent.tsx:630:          if (bodyTxt.includes("Elysia Web Proxy Error") || bodyTxt.includes("Failed loading remote website")) {
+src/components/BrowserAgent.tsx:650:      id="elysia-playwright-automation-hud"
+src/components/ElysiaCoreVisualizer.tsx:2:import { ElysiaAudioSession, LiveState } from "../lib/audio";
+src/components/ElysiaCoreVisualizer.tsx:5:export type ElysiaEmotion =
+src/components/ElysiaCoreVisualizer.tsx:18:interface ElysiaCoreVisualizerProps {
+src/components/ElysiaCoreVisualizer.tsx:19:  session: ElysiaAudioSession | null;
+src/components/ElysiaCoreVisualizer.tsx:22:  activeEmotion?: ElysiaEmotion;
+src/components/ElysiaCoreVisualizer.tsx:28:export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
+src/components/ElysiaCoreVisualizer.tsx:47:    console.warn(`[Elysia Web Video] Failed to load video source for: ${videoName}`);
+src/components/ElysiaCoreVisualizer.tsx:59:  const lastEmotionRef = useRef<ElysiaEmotion>(activeEmotion);
+src/components/ElysiaCoreVisualizer.tsx:375:        id="elysia-hologram-living-canvas"
+src/components/ElysiaCoreVisualizer.tsx:382:        id="elysia-animated-presence"
+src/components/HolographicProjector.tsx:37:              <h3 className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold">Elysia Holocore Projection Link</h3>
+src/components/SettingsPanel.tsx:15:  ElysiaSettings,
+src/components/SettingsPanel.tsx:22:  settings: ElysiaSettings;
+src/components/SettingsPanel.tsx:23:  onChange: (patch: Partial<ElysiaSettings>) => void;
+src/components/SettingsPanel.tsx:162:                      <Sparkles size={10} /> {settings.avatarStyle === "orb" ? "Aegis_Core" : "Elysia_Core"}
+src/components/SettingsPanel.tsx:422:                          {settings.avatarStyle === "orb" ? "Aegis_V2" : "Elysia_V2"}
+src/lib/audio.ts:2: * Audio handling utility for Elysia Live API Voice stream.
+src/lib/audio.ts:62:export class ElysiaAudioSession {
+src/lib/audio.ts:171:        console.log("[Elysia] Connected to server side WS bridge");
+src/lib/audio.ts:281:            console.log("[Elysia WS Status]:", data.status);
+src/lib/audio.ts:297:          // Handle interruption signal (e.g. user talked over Elysia)
+src/lib/audio.ts:304:            // Once Elysia completes speaking, change visual state back to listening
+src/lib/settingsStore.ts:2: * ELYSIA Settings Store ΓÇö persistent user preferences (V2).
+src/lib/settingsStore.ts:4: * Establishes the persistence pattern for ELYSIA: settings are mirrored to
+src/lib/settingsStore.ts:13:export interface ElysiaSettings {
+src/lib/settingsStore.ts:14:  /** Launch ELYSIA (backends + browser tab) silently on Windows login. */
+src/lib/settingsStore.ts:18:  /** Phrase that activates ELYSIA (case-insensitive substring match). */
+src/lib/settingsStore.ts:44:export const DEFAULT_SETTINGS: ElysiaSettings = {
+src/lib/settingsStore.ts:47:  wakePhrase: "hey elysia",
+src/lib/settingsStore.ts:56:const STORAGE_KEY = "elysia.settings.v2";
+src/lib/settingsStore.ts:59:const NEVER_PERSIST: ReadonlySet<keyof ElysiaSettings> = new Set([]);
+src/lib/settingsStore.ts:65:export function loadSettings(): ElysiaSettings {
+src/lib/settingsStore.ts:70:    const parsed = JSON.parse(raw) as Partial<ElysiaSettings>;
+src/lib/settingsStore.ts:81:export function saveSettings(patch: Partial<ElysiaSettings>): ElysiaSettings {
+src/lib/settingsStore.ts:83:  const next: ElysiaSettings = { ...current, ...patch };
+src/lib/settingsStore.ts:88:      (Object.keys(next) as (keyof ElysiaSettings)[]).forEach((k) => {
+src/lib/settingsStore.ts:102:async function syncSettingsToBackend(settings: ElysiaSettings): Promise<void> {
+src/lib/wakeWord.ts:2: * ELYSIA Wake Word Detector (V2).
+src/lib/wakeWord.ts:6: * entirely in the ELYSIA browser tab.
+src/lib/wakeWord.ts:16: *   const det = new ElysiaWakeWordDetector();
+src/lib/wakeWord.ts:18: *   det.setPhrase("hey elysia");
+src/lib/wakeWord.ts:62:export class ElysiaWakeWordDetector {
+src/lib/wakeWord.ts:65:  private phrase = "hey elysia";
+src/lib/wakeWord.ts:97:    this.phrase = (opts.phrase || "hey elysia").toLowerCase().trim();
+src/lib/wakeWord.ts:122:    this.phrase = (phrase || "hey elysia").toLowerCase().trim();
+start_elysia.bat:2:title Elysia Launcher
+start_elysia.bat:3:echo ELYSIA - Windows Start Script
+start_elysia.bat:13:    start "Elysia Desktop Agent (Python)" cmd /k "venv\Scripts\python.exe run_agent.py"
+start_elysia.bat:15:    start "Elysia Desktop Agent (Python)" cmd /k "python run_agent.py"
+start_elysia.bat:22:start "Elysia Web Server (Node)" cmd /k "npm run dev"
+start_elysia.bat:26:echo ELYSIA IS RUNNING!
+start_elysia.bat:34:echo To STOP Elysia, simply close those two windows.
+start_elysia.sh:2:# ELYSIA ΓÇö Start Script (Linux)
+start_elysia.sh:9:echo "Starting ELYSIA..."
+start_elysia.sh:26:echo "ELYSIA is running!"
+start_elysia.sh:31:trap "echo 'Stopping ELYSIA...'; kill $PYTHON_PID $NODE_PID 2>/dev/null; exit" SIGINT SIGTERM
+tests/test_browser_runtime.py:30:    monkeypatch.delenv("ELYSIA_BROWSER_MODE", raising=False)
