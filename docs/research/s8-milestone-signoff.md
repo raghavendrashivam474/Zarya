@@ -28,6 +28,7 @@
 ---
 
 ## Architecture Delivered
+```text
 Natural Language (POST /intent)
 |
 v
@@ -56,9 +57,7 @@ S7 Context (agent/context.py) [UNCHANGED]
 |
 v
 ResponseTranslator -> Natural Language Response
-
-text
-
+```
 
 ---
 
@@ -88,6 +87,7 @@ text
 ---
 
 ## Test Results
+```text
 agent/test_intent.py::test_interpreter_open_notepad PASSED
 agent/test_intent.py::test_interpreter_open_vscode PASSED
 agent/test_intent.py::test_interpreter_create_file PASSED
@@ -102,9 +102,7 @@ agent/test_intent.py::test_full_pipeline_unauthorized_gate PASSED
 agent/test_intent.py::test_full_pipeline_clarification PASSED
 
 12 passed in 0.16s
-
-text
-
+```
 
 ## Live Smoke Test Results
 
