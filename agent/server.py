@@ -132,3 +132,24 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# ---------------------------------------------------------------------------
+# S8 Natural Intent Endpoint
+# ---------------------------------------------------------------------------
+@app.post("/intent")
+async def handle_intent(request: Request):
+    """
+    S8 Human Intent Translation Boundary:
+    Natural Language -> Intent Parsing -> WorkPlan -> Validation -> Authorization -> S6 Execution -> Response
+    """
+    try:
+        from agent.intent import process_natural_intent
+        body = await request.json()
+        prompt = body.get("prompt", "")
+        authorized = body.get("authorized", False)
+        
+        result = process_natural_intent(user_input=prompt, authorized=authorized)
+        return result
+    except Exception as e:
+        logger.error(f"Error processing intent: {e}", exc_info=True)
+        return {"status": "ERROR", "response": str(e), "work_result": None}
