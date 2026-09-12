@@ -136,8 +136,25 @@ def run_terminal_command(args: Dict[str, Any]) -> Dict[str, Any]:
     state_cache.record(state_obs)
 
     from ..failure import reason_about_failure
+    from ..recovery import attempt_recovery
+
     failure_reasoning = reason_about_failure(verification, state_obs.to_dict())
-    return {"result": f"Executed command: {command}", "output": result, "verification": verification, "state": state_obs.to_dict(), "failure": failure_reasoning}
+    recovery_result = attempt_recovery(
+        failure=failure_reasoning,
+        verification=verification,
+        state=state_obs.to_dict(),
+        original_tool_name="runTerminalCommand",
+        original_args=args,
+    )
+
+    return {
+        "result": f"Executed command: {command}",
+        "output": result,
+        "verification": verification,
+        "state": state_obs.to_dict(),
+        "failure": failure_reasoning,
+        "recovery": recovery_result,
+    }
 
 
 @register("provideSudoPassword")
