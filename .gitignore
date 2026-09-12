@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 venv/
 __pycache__/
@@ -14,3 +14,6 @@ secrets.json
 # S9 workspace artifacts
 .venv/
 s9_baseline_*.txt
+
+# Temporary test output directories
+Desktop/
