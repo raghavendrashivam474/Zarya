@@ -1,8 +1,8 @@
-"""
-ELYSIA Desktop Control Agent — FastAPI entrypoint.
+﻿"""
+Zarya Desktop Control Agent â€” FastAPI entrypoint.
 
 Single dispatch endpoint POST /execute { tool, args } -> { result } | { error }.
-ELYSIA's Node bridge (server.ts) calls this over HTTP on 127.0.0.1:8765.
+Zarya's Node bridge (server.ts) calls this over HTTP on 127.0.0.1:8765.
 
 Run:
     uvicorn agent.server:app --host 127.0.0.1 --port 8765
@@ -21,7 +21,7 @@ import traceback
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -42,7 +42,7 @@ log.info("Loaded %d desktop tools: %s", len(TOOLS), ", ".join(sorted(TOOLS)))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("ELYSIA Desktop Control Agent v%s starting up.", __version__)
+    log.info("Zarya Desktop Control Agent v%s starting up.", __version__)
     yield
     try:
         from .tools.browser import shutdown_browser
@@ -50,11 +50,11 @@ async def lifespan(app: FastAPI):
         shutdown_browser()
     except Exception as e:
         log.warning("Browser shutdown error: %s", e)
-    log.info("ELYSIA Desktop Control Agent stopped.")
+    log.info("Zarya Desktop Control Agent stopped.")
 
 
 app = FastAPI(
-    title="ELYSIA Desktop Control Agent",
+    title="Zarya Desktop Control Agent",
     version=__version__,
     description="JARVIS-style desktop automation backend for ELYSIA.",
     lifespan=lifespan,
@@ -153,3 +153,4 @@ async def handle_intent(request: Request):
     except Exception as e:
         logger.error(f"Error processing intent: {e}", exc_info=True)
         return {"status": "ERROR", "response": str(e), "work_result": None}
+
