@@ -13,15 +13,7 @@ from agent.tools.browser import _run, _browser_mode
 def setup_tools_and_cleanup():
     load_all()
     yield
-    # Ensure any open context is closed cleanly on the dedicated loop
-    async def _close():
-        if STATE.context:
-            try:
-                await STATE.context.close()
-            except Exception:
-                pass
-        STATE.reset_playwright()
-    _run(_close())
+    # Leaves the single browser session open for visual check
 
 
 def test_browser_mode_configuration(monkeypatch):

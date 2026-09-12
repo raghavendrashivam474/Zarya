@@ -1,4 +1,4 @@
-"""
+﻿"""
 Zarya S5: Cross-Domain Closed-Loop Recovery Integration Tests (Hardened).
 
 Validates that real tool invocations across applications, files, and terminal:
@@ -93,7 +93,7 @@ def test_open_application_closed_loop_recovery_success() -> None:
             "detail": "Process found on recovery relaunch.",
         }
 
-    with patch("agent.tools.applications._verify_application_launched", side_effect=mock_verify_app):
+    with patch("agent.tools.applications.get_backend"), patch("agent.tools.applications._verify_application_launched", side_effect=mock_verify_app):
         response = TOOLS["openApplication"]({"name": "notepad"})
 
         # Original failure preserved

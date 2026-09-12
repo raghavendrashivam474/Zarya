@@ -97,7 +97,7 @@ def test_open_application_integration_failure() -> None:
     state_cache.clear()
 
     # Mock the verification to return VERIFIED_FAILURE
-    with patch("agent.tools.applications._verify_application_launched") as mock_verify:
+    with patch("agent.tools.applications.get_backend"), patch("agent.tools.applications._verify_application_launched") as mock_verify:
         mock_verify.return_value = {
             "status": "VERIFIED_FAILURE",
             "method": "process_image_check",

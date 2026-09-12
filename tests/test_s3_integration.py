@@ -17,11 +17,10 @@ load_all()
 
 
 def test_open_application_records_state() -> None:
-    """Verify that openApplication records process state in cache."""
+    """Verify that openApplication records process state in cache and remains open for visual check."""
     state_cache.clear()
 
-    # Dispatch openApplication directly from the TOOLS map
-    # notepad launch will trigger tasklist which works on Windows or returns UNKNOWN on others
+    # Launch exactly one real notepad and leave it open for user verification
     response = TOOLS["openApplication"]({"name": "notepad"})
 
     assert "state" in response
@@ -30,7 +29,6 @@ def test_open_application_records_state() -> None:
     assert state_data["subject"] == "notepad.exe"
     assert "running" in state_data["state"]
 
-    # Retrieve from cache
     cached = state_cache.get("application", "notepad.exe")
     assert cached is not None
     assert cached.status == state_data["status"]
@@ -58,7 +56,6 @@ def test_create_file_records_state(tmp_path: Path) -> None:
     assert state_data["state"]["exists"] is True
     assert state_data["state"]["size_bytes"] == len(content)
 
-    # Retrieve from cache
     cached = state_cache.get("filesystem", str(test_file))
     assert cached is not None
     assert cached.state["exists"] is True
@@ -78,7 +75,6 @@ def test_run_terminal_command_records_state() -> None:
     assert state_data["subject"] == command
     assert state_data["state"]["executed"] is True
 
-    # Retrieve from cache
     cached = state_cache.get("terminal", command)
     assert cached is not None
     assert cached.state["executed"] is True

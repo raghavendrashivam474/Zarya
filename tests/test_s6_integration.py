@@ -135,7 +135,7 @@ def test_multi_step_with_closed_loop_recovery(tmp_path: Path) -> None:
             "detail": "Process found on S5 recovery relaunch.",
         }
 
-    with patch("agent.tools.applications._verify_application_launched", side_effect=mock_app_verify):
+    with patch("agent.tools.applications.get_backend"), patch("agent.tools.applications._verify_application_launched", side_effect=mock_app_verify):
         plan = {
             "goal": "Recover app launch and create file",
             "steps": [
