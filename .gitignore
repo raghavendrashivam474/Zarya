@@ -10,3 +10,7 @@ WhatsApp*
 memories.json
 settings.json
 secrets.json
+
+# S9 workspace artifacts
+.venv/
+s9_baseline_*.txt
