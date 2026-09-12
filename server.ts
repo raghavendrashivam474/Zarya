@@ -137,18 +137,18 @@ const connectedClients = new Set<any>();
  * Auto-spawn the Python desktop agent as a detached child process if it is not
  * already listening. Looks for the project's bundled Python interpreter first,
  * falling back to `python` / `python3` on PATH. Runs detached so it survives
- * even if ELYSIA's node process is killed.
+ * even if Zarya's node process is killed.
  */
 function spawnDesktopAgent(): void {
   const agentEnv = {
     ...process.env,
-    ELYSIA_AGENT_HOST: "127.0.0.1",
-    ELYSIA_AGENT_PORT: "8765",
+    ZARYA_AGENT_HOST: "127.0.0.1", ELYSIA_AGENT_HOST: "127.0.0.1",
+    ZARYA_AGENT_PORT: "8765", ELYSIA_AGENT_PORT: "8765",
   };
 
   // Preferred path (packaged app): a PyInstaller-frozen agent exe that embeds
   // its own Python runtime. Set by the Electron main process via ELYSIA_AGENT_EXE.
-  const frozenExe = process.env.ELYSIA_AGENT_EXE;
+  const frozenExe = process.env.ZARYA_AGENT_EXE || process.env.ELYSIA_AGENT_EXE;
   if (frozenExe && fs.existsSync(frozenExe)) {
     try {
       const child = spawn(frozenExe, [], {
@@ -170,7 +170,7 @@ function spawnDesktopAgent(): void {
 
   // Development fallback: run the agent from source using a local Python.
   const candidates = [
-    process.env.ELYSIA_PYTHON,
+    process.env.ZARYA_PYTHON, process.env.ELYSIA_PYTHON,
     "python3",
     "python",
   ].filter(Boolean) as string[];
@@ -184,7 +184,7 @@ function spawnDesktopAgent(): void {
   });
   if (!py) {
     console.warn("[Desktop Agent] No frozen agent and no Python interpreter found; desktop control unavailable.");
-    logError("AGENT_SPAWN_NO_RUNTIME: neither ELYSIA_AGENT_EXE nor Python available");
+    logError("AGENT_SPAWN_NO_RUNTIME: neither ZARYA_AGENT_EXE nor Python available");
     return;
   }
   try {
@@ -597,14 +597,14 @@ async function startServer() {
     try {
       const urlParam = req.query.url as string;
       if (!urlParam) {
-        return res.status(400).send("Elysia Web Proxy Error: Missing target 'url' parameter");
+        return res.status(400).send("Zarya Web Proxy Error: Missing target 'url' parameter");
       }
 
       targetUrl = urlParam.trim();
       
       // Prevent relative paths from requesting on same-origin
       if (targetUrl.startsWith("/")) {
-        return res.status(400).send(`Elysia Web Proxy Error: Relative paths are not supported directly (${targetUrl}).`);
+        return res.status(400).send(`Zarya Web Proxy Error: Relative paths are not supported directly (${targetUrl}).`);
       }
 
       // Check protocol and hostname format
@@ -617,7 +617,7 @@ async function startServer() {
           throw new Error("Missing or invalid domain name extension (e.g. .com, .org, .net).");
         }
       } catch (err: any) {
-        return res.status(400).send(`Elysia Web Proxy Error: Invalid URL specified: "${urlParam}". Make sure you enter a valid domain name.`);
+        return res.status(400).send(`Zarya Web Proxy Error: Invalid URL specified: "${urlParam}". Make sure you enter a valid domain name.`);
       }
 
       console.log(`[Web Proxy] Routing connection through proxy: ${targetUrl}`);
@@ -632,11 +632,11 @@ async function startServer() {
         });
       } catch (fetchErr: any) {
         console.warn(`[Web Proxy Failed Fetch] Target: ${targetUrl} Error:`, fetchErr.message);
-        return res.status(502).send(`Elysia Web Proxy Error: Unable to fetch the website "${targetUrl}". The site might be offline, or the URL address is spelled incorrectly. Details: ${fetchErr.message}`);
+        return res.status(502).send(`Zarya Web Proxy Error: Unable to fetch the website "${targetUrl}". The site might be offline, or the URL address is spelled incorrectly. Details: ${fetchErr.message}`);
       }
 
       if (!response.ok) {
-        return res.status(response.status).send(`Elysia Web Proxy Error: Failed loading remote website. Server returned status: ${response.status} (${response.statusText})`);
+        return res.status(response.status).send(`Zarya Web Proxy Error: Failed loading remote website. Server returned status: ${response.status} (${response.statusText})`);
       }
 
       const contentType = response.headers.get("content-type") || "";
@@ -725,7 +725,7 @@ async function startServer() {
       res.status(200).send(htmlContents);
     } catch (e: any) {
       console.warn("[Web Proxy Exception] Handled internal error:", e.message);
-      res.status(500).send(`Elysia Web Proxy Error: Internal error occurred proxying URL "${targetUrl || "unknown"}". Details: ${e.message}`);
+      res.status(500).send(`Zarya Web Proxy Error: Internal error occurred proxying URL "${targetUrl || "unknown"}". Details: ${e.message}`);
     }
   });
 

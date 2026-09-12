@@ -43,7 +43,7 @@ def test_cdp_mode_unreachable_endpoint_raises_tool_error(monkeypatch):
     assert open_fn is not None
 
     with pytest.raises(ToolError) as exc_info:
-        open_fn({"url": "https://angular.dev"})
+        open_fn({"url": "about:blank"})
 
     assert "CDP connection failed" in str(exc_info.value)
     assert "remote-debugging-port=9222" in str(exc_info.value)
@@ -64,10 +64,11 @@ def test_desktop_browser_open_and_read_text():
     assert "result" in read_res
 
 
-def test_desktop_browser_open_youtube_video():
-    """Verify YouTube navigation tool produces a valid search/video URL."""
+def test_desktop_browser_open_youtube_video_url():
+    """Verify YouTube navigation tool handles YouTube queries and URLs properly."""
     yt_fn = TOOLS.get("desktopBrowserOpenYoutubeVideo")
     assert yt_fn is not None
 
-    yt_res = yt_fn({"query": "python tutorial"})
+    yt_res = yt_fn({"query": "python"})
     assert "youtube.com" in yt_res["url"]
+    assert "python" in yt_res["url"]
