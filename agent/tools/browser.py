@@ -7,8 +7,10 @@ Modes:
   - cdp: connects to an existing Chrome started with --remote-debugging-port=9222.
     Uses the user's active Chrome session and profiles directly.
 
-Capabilities: open/navigate, new/close tabs, search, click, type, fill forms,
-scroll, extract text/links, YouTube media controls.
+Thread/Loop Architecture:
+  A dedicated background event loop + daemon thread runs all Playwright coroutines.
+  This prevents event loop destruction between tool calls and avoids deadlocks under
+  FastAPI / Uvicorn thread pools.
 """
 
 from __future__ import annotations
@@ -16,18 +18,60 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import urllib.parse
+import threading
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote_plus
 
 from agent.registry import register, STATE, ToolError
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Dedicated Playwright Event Loop & Marshalling
+# ---------------------------------------------------------------------------
+
+_LOOP: Optional[asyncio.AbstractEventLoop] = None
+_LOOP_THREAD: Optional[threading.Thread] = None
+_LOOP_LOCK = threading.Lock()
+
+
+def _get_loop() -> asyncio.AbstractEventLoop:
+    """Return the dedicated background event loop for Playwright, starting it if needed."""
+    global _LOOP, _LOOP_THREAD
+    with _LOOP_LOCK:
+        if _LOOP is None or _LOOP.is_closed():
+            _LOOP = asyncio.new_event_loop()
+            _LOOP_THREAD = threading.Thread(target=_run_loop, daemon=True)
+            _LOOP_THREAD.start()
+        return _LOOP
+
+
+def _run_loop() -> None:
+    """Entry point for the background thread that runs the dedicated Playwright loop."""
+    loop = _LOOP
+    assert loop is not None
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_forever()
+    finally:
+        try:
+            loop.close()
+        except Exception:
+            pass
+
+
+def _run(coro):
+    """Submit a coroutine to the dedicated Playwright loop and block on it."""
+    loop = _get_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result(timeout=60)
+
+
+# ---------------------------------------------------------------------------
+# Helpers & Mode Configuration
 # ---------------------------------------------------------------------------
 
 def _browser_mode() -> str:
-    """Return 'cdp' or 'managed' based on ELYSIA_BROWSER_MODE / ZARYA_BROWSER_MODE env var."""
+    """Return 'cdp' or 'managed' based on environment variable."""
     return os.environ.get("ZARYA_BROWSER_MODE", os.environ.get("ELYSIA_BROWSER_MODE", "managed")).strip().lower()
 
 
@@ -41,21 +85,15 @@ def _get_zarya_browser_data_dir() -> str:
     return new_dir
 
 
-def _run(coro):
-    """Run an async coroutine from synchronous tool dispatch."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(asyncio.run, coro).result(timeout=60)
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
+def _normalize_url(url: str) -> str:
+    url = url.strip()
+    if not url.startswith(("http://", "https://", "about:", "file://")):
+        url = "https://" + url
+    return url
 
 
 # ---------------------------------------------------------------------------
-# Browser lifecycle management
+# Browser Lifecycle
 # ---------------------------------------------------------------------------
 
 async def _ensure_browser_cdp_async() -> Any:
@@ -162,13 +200,6 @@ async def _page() -> Any:
     return await _ensure_browser_async()
 
 
-def _normalize_url(url: str) -> str:
-    url = url.strip()
-    if not url.startswith(("http://", "https://", "about:", "file://")):
-        url = "https://" + url
-    return url
-
-
 # ---------------------------------------------------------------------------
 # Registered Browser Tools
 # ---------------------------------------------------------------------------
@@ -184,6 +215,26 @@ def desktopBrowserOpen(args: Dict[str, Any]) -> Dict[str, Any]:
         return {"result": f"Opened {url} in the automation browser.", "url": page.url}
 
     return _run(_open())
+
+
+@register("desktopBrowserOpenYoutubeVideo")
+def desktopBrowserOpenYoutubeVideo(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Search for and open a YouTube video by query or direct URL."""
+    query = (args.get("query") or args.get("url") or "").strip()
+    if not query:
+        raise ToolError("Provide a query or YouTube URL.")
+
+    if "youtube.com" in query or "youtu.be" in query:
+        url = _normalize_url(query)
+    else:
+        url = f"https://www.youtube.com/results?search_query={quote_plus(query)}"
+
+    async def _open_yt():
+        page = await _page()
+        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        return {"result": f"Opened YouTube search/video for '{query}'.", "url": page.url}
+
+    return _run(_open_yt())
 
 
 @register("desktopBrowserNavigate")

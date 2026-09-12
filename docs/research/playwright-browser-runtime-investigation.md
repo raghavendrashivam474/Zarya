@@ -1,24 +1,33 @@
-﻿# Browser Runtime & Chrome Profile Architecture Investigation
+﻿# Browser Runtime & Event Loop Architecture Investigation
 
 **Status:** Resolved  
-**Scope:** Browser Execution, CDP, and Profile Isolation  
+**Baseline:** `v0.9.0-s9` (`8247de5`)  
+**Scope:** Playwright Event Loop Thread-Affinity, CDP Boundaries & Lifecycle  
 
 ---
 
-## 1. Observed Issue
+## 1. Observed Defect
 
-During execution of browser tools, Playwright reported launch failures when attempting to launch Chromium. Additionally, when CDP connection failed, the engine silently fell back to spawning Chrome with a generated UUID temporary directory:
+When executing browser operations (`desktopBrowserOpen`, `desktopBrowserOpenYoutubeVideo`), the engine raised:
 ```text
-_tmpdir = os.path.join(_tempfile.gettempdir(), f"elysia-cdp-{_uuid.uuid4().hex[:8]}")
-This behavior generated confusing, profile-less, non-deterministic browser windows for the user with zero logins or active profiles.
+AttributeError: Page.goto: 'NoneType' object has no attribute 'send'
+or reported:
 
+text
+
+Opening in existing browser session. This usually means that the profile is already in use by another instance of Chromium.
 2. Root Cause Analysis
-Environment Binaries: The local Playwright package (1.62.0) expects its standard Chromium build v1234 inside %LOCALAPPDATA%\ms-playwright\chromium-1234. The folder existed but required validation. Standalone launch verification showed the binary was intact and accessible.
-Silent Fallback Trap: If Zarya was configured for CDP mode (ELYSIA_BROWSER_MODE=cdp / ZARYA_BROWSER_MODE=cdp) but Chrome was not started on port 9222, the connection caught a connect ECONNREFUSED error. Instead of raising a clear failure, the legacy code executed a shell launch with a random temporary user data directory, bypassing normal profile semantics.
-Profile File-Locking: Google Chrome places exclusive SQLite file-locks on active profile directories (Cookies, History, Web Data). If two distinct Chrome processes (regular everyday browsing and Playwright automation) attempt to access the same profile directory simultaneously, database corruption or crash occurs.
-3. Structural Repair Action
-Removed Ghost Fallback: Eliminated the silent fallback process invocation in _ensure_browser_cdp_async.
-Transparent Error Propagation: CDP connection failure now throws a descriptive ToolError instructing the developer/user to either:
-Start their normal Chrome process with --remote-debugging-port=9222.
-Switch back to managed mode via desktopBrowserSetMode.
-Standardized Storage: Standardized the managed browser context to use ~/.zarya_browser_data, ensuring logins, cookies, and local sessions persist across browser actions safely without overlapping with daily browsing profiles.
+Event Loop Destruction Across Tool Invocations:
+In recent changes, _run(coro) was modified to use concurrent.futures.ThreadPoolExecutor with asyncio.run(coro). Because asyncio.run() creates and destroys an event loop on each call, the Playwright connection objects (STATE.playwright, STATE.context, STATE.page) remained attached to a destroyed loop. Subsequent calls on existing page instances tried to execute _channel.send(...) with _connection = None, triggering NoneType has no attribute 'send'.
+Process Orphanage & Profile Locking:
+When unhandled exceptions occurred on destroyed loops, background Chromium worker processes remained running without clean teardown, retaining exclusive SQLite locks on the user data directory.
+Cross-Thread Deadlock on Cleanup:
+Attempting to call STATE.context.close() from a different thread or loop than the one that created the Playwright objects resulted in asynchronous deadlocks.
+3. Surgical Fix Applied
+Dedicated Background Event Loop:
+Restored the dedicated daemon thread and event loop (_LOOP, _LOOP_THREAD, _run_loop()). All Playwright async coroutines are marshalled through asyncio.run_coroutine_threadsafe(coro, loop), ensuring long-lived connection stability across sequential tool invocations.
+Thread-Safe Cleanup:
+All browser lifecycle operations (open, navigate, read, close) are executed strictly within the dedicated loop.
+Preserved Managed/CDP Boundaries:
+managed: Isolated profile in ~/.zarya_browser_data (default).
+cdp: Connects strictly to port 9222 and raises a clean ToolError on failure (no phantom processes).
