@@ -33,7 +33,7 @@ logging.basicConfig(
     format="[%(asctime)s] [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-log = logging.getLogger("elysia.desktop")
+log = logging.getLogger("zarya.desktop")
 
 
 load_all()
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Zarya Desktop Control Agent",
     version=__version__,
-    description="JARVIS-style desktop automation backend for ELYSIA.",
+    description="Verified desktop automation runtime for Zarya.",
     lifespan=lifespan,
 )
 
@@ -118,8 +118,8 @@ async def execute(req: ExecuteRequest) -> ExecuteResponse:
 def main() -> None:
     import uvicorn
 
-    host = os.environ.get("ELYSIA_AGENT_HOST", "127.0.0.1")
-    port = int(os.environ.get("ELYSIA_AGENT_PORT", "8765"))
+    host = os.environ.get("ZARYA_AGENT_HOST", os.environ.get("ELYSIA_AGENT_HOST", "127.0.0.1"))
+    port = int(os.environ.get("ZARYA_AGENT_PORT", os.environ.get("ELYSIA_AGENT_PORT", "8765")))
     log.info("Launching uvicorn on %s:%d", host, port)
     uvicorn.run(
         "agent.server:app",

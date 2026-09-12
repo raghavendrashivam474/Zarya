@@ -1,0 +1,11 @@
+User: Can you please Angular in a separate tab
+Aegis: Sure, what—
+User: and in a separate tab
+Aegis: I'm sorry, I can't perform that action right now. It seems there's an issue with opening a separate tab through my browser automation. Would you like me to search for Angular on the page I currently have open, or try something else?
+User: yeah please open on current page.
+Aegis: Alright, I've opened Angular on the current page for you. What would you like to do next?
+User: why you are unable to open the page on my current profile?
+Aegis: That's because I operate in a separate, automated browser session, distinct from your personal browser profile. This allows me to perform actions and interact with websites automatically without interfering with your usual browsing experience, but it means I don't have access to your saved logins, bookmarks, or history in that personal profile. Does that make sense?
+User: I understand.
+Aegis: Great. Is there anything else you'd like to do in the Angular documentation, or something else I can help you with?
+User: please document this properly. I mean what we talk about what we understood. that's all.

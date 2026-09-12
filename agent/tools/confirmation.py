@@ -1,8 +1,8 @@
-"""
+﻿"""
 Two-step confirmation flow for dangerous power actions.
 
 Step 1: requestPowerAction(action) -> mints a single-use, short-lived token
-        and tells ELYSIA (via the result string) to ask the user to confirm.
+        and tells Zarya (via the result string) to ask the user to confirm.
 Step 2: executePowerAction(action, execute_token) -> validates the token and,
         only if it matches & is unexpired, performs the gated action.
 

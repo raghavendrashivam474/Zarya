@@ -1,8 +1,6 @@
 ﻿"""
-ELYSIA Desktop Control Agent.
-
-Lightweight FastAPI daemon that runs locally on Windows / Linux desktop
-and executes commands via Python standard library and OS APIs.
+Zarya Desktop Control Agent.
+Provides OS-level action tools, verification primitives, state tracking, and Shefali persona interface.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.9.0"

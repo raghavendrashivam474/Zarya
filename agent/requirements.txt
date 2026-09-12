@@ -1,4 +1,4 @@
-# ELYSIA Desktop Control Agent — Python dependencies
+﻿# Zarya Desktop Control Agent — Python dependencies
 # Install with the Python 3.11 interpreter, e.g.:
 #   "C:\Users\MSI\AppData\Local\Programs\Python\Python311\python.exe" -m pip install -r requirements.txt
 # Then install the Playwright browser once:

@@ -1,4 +1,4 @@
-"""Webcam control: list / open / close camera devices.
+﻿"""Webcam control: list / open / close camera devices.
 
 Opens the camera in a FLOATING window (Hyprland) so it never disturbs the
 tiling layout of other windows. Closing frees the device for other apps.
@@ -89,7 +89,7 @@ def camera_on(args: Dict[str, Any]) -> Dict[str, Any]:
             return {"result": f"Camera '{device}' opened (Photo Booth).", "device": device}
         if not os.path.exists(device):
             raise ToolError(f"Device '{device}' does not exist.")
-        proc = _launch_hyprland_float(["mpv", f"--input-ipc-server=/tmp/elysia_cam.sock", device])
+        proc = _launch_hyprland_float(["mpv", f"--input-ipc-server=/tmp/zarya_cam.sock", device])
         _CAM_VIEWER_PROC["camera"] = proc
         return {"result": f"Camera '{device}' turned ON in a floating viewer.", "device": device}
     except Exception as e:
@@ -113,7 +113,7 @@ def camera_off(args: Dict[str, Any]) -> Dict[str, Any]:
             pass
     # Fallback: kill any stray mpv / Photo Booth we started.
     try:
-        subprocess.run(["pkill", "-f", "--", "/tmp/elysia_cam.sock"], check=False)
+        subprocess.run(["pkill", "-f", "--", "/tmp/zarya_cam.sock"], check=False)
     except Exception:
         pass
     if platform.system() == "Darwin":

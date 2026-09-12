@@ -46,7 +46,7 @@ from .state import (
     now_iso,
 )
 
-log = logging.getLogger("elysia.context")
+log = logging.getLogger("zarya.context")
 
 
 # ---------------------------------------------------------------------------
