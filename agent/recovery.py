@@ -8,7 +8,8 @@ failure. Recovery is itself an action that must be observed and verified.
 Design principles:
   - One failure -> one recovery opportunity -> verify -> STOP.
   - Recovery eligibility is policy-driven, not speculative.
-  - Authorization is checked, never assumed from capability.
+  - Authorization is checked explicitly as a policy gate in this layer,
+    never assumed from parameter validation or tool capability.
   - UNKNOWN failures are NEVER recovered (epistemic safety rule).
   - Original failure is preserved, never overwritten.
   - No loops, no planning, no persistence, no LLM.
@@ -22,7 +23,6 @@ from typing import Any, Dict, Optional, Tuple
 
 from .failure import (
     CAT_APP_NOT_OBSERVED,
-    CAT_FILE_NOT_CREATED,
     CAT_INSUFFICIENT,
     CONFIDENCE_UNKNOWN,
 )
@@ -56,7 +56,7 @@ def is_recovery_in_progress() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Recovery policy
+# Recovery policy matrix (Hardened)
 # ---------------------------------------------------------------------------
 
 RECOVERY_POLICY: Dict[str, Dict[str, Any]] = {
@@ -67,15 +67,8 @@ RECOVERY_POLICY: Dict[str, Dict[str, Any]] = {
         "max_attempts": 1,
         "requires_freshness": "CURRENT",
     },
-    CAT_FILE_NOT_CREATED: {
-        "recovery_action": "REPEAT_FILE_CREATION",
-        "tool_name": "createFile",
-        "requires_authorization": True,
-        "max_attempts": 1,
-        "requires_freshness": "CURRENT",
-    },
-    # All other failure categories: no recovery policy.
-    # This is deliberate. See investigation document.
+    # Filesystem recovery (CAT_FILE_NOT_CREATED) is deliberately deferred to
+    # avoid destructive TOCTOU overwrite race conditions in S5.
 }
 
 
@@ -129,7 +122,7 @@ def check_eligibility(
 
 
 # ---------------------------------------------------------------------------
-# Authorization check
+# Explicit Policy Authorization Check
 # ---------------------------------------------------------------------------
 
 def check_authorization(
@@ -137,10 +130,12 @@ def check_authorization(
     original_tool_name: str,
     original_args: Dict[str, Any],
 ) -> Tuple[bool, str]:
-    """Check whether recovery is authorized.
+    """Determine if recovery is authorized by explicit policy.
 
-    Recovery inherits the original tool's safety boundaries.
-    No new authorization infrastructure is introduced.
+    We do not infer authorization from parameter validation (like _ensure_safe
+    or _resolve_app). S5 recovery authorization is an explicit policy decision
+    enforced inside this layer. General multi-tenant / untrusted user
+    authorization infrastructure is deferred.
 
     Returns:
         (is_authorized, reason) tuple.
@@ -149,29 +144,15 @@ def check_authorization(
     policy = RECOVERY_POLICY.get(category)
 
     if policy is None:
-        return False, "No recovery policy."
+        return False, f"No recovery policy mapped for '{category}'."
 
-    if not policy.get("requires_authorization"):
-        return True, "No authorization required by policy."
+    # Gate explicitly on policy requirements
+    if policy.get("requires_authorization"):
+        if category == CAT_APP_NOT_OBSERVED:
+            return True, "Authorized: Relaunching application is safe and explicitly permitted by policy."
+        return False, f"Unauthorized: Recovery policy for '{category}' does not authorize automatic recovery."
 
-    # Application recovery: the original call already validated the app
-    # name through _resolve_app. If we reached this point, the app is
-    # known and the original launch was authorized.
-    if category == CAT_APP_NOT_OBSERVED:
-        return True, "Application relaunch authorized (known application)."
-
-    # File recovery: re-check path safety
-    if category == CAT_FILE_NOT_CREATED:
-        try:
-            from .tools.files import _ensure_safe, _resolve_file
-            path = original_args.get("path")
-            p = _resolve_file(path)
-            _ensure_safe(p)
-            return True, "File recreation authorized (safe path)."
-        except Exception as e:
-            return False, f"File recovery not authorized: {e}"
-
-    return False, "Authorization check failed for unknown category."
+    return True, "Authorized: Policy does not require explicit recovery-level authorization."
 
 
 # ---------------------------------------------------------------------------
@@ -198,12 +179,6 @@ def _perform_recovery_action(
 
     if recovery_action == "RELAUNCH_APPLICATION":
         result = TOOLS[tool_name](original_args)
-        return result.get("verification", {"status": "UNKNOWN"})
-
-    if recovery_action == "REPEAT_FILE_CREATION":
-        recovery_args = dict(original_args)
-        recovery_args["overwrite"] = True
-        result = TOOLS[tool_name](recovery_args)
         return result.get("verification", {"status": "UNKNOWN"})
 
     return {
@@ -252,25 +227,8 @@ def attempt_recovery(
     This is the main S5 entry point, called by tool handlers after
     S4 failure reasoning.
 
-    Flow:
-        1. Check eligibility (failure category, confidence, freshness).
-        2. Check authorization (inherits original tool's safety bounds).
-        3. Execute ONE bounded recovery action via existing tool.
-        4. Verify recovery using the inner tool's own verification.
-        5. Return structured recovery result.
-
-    The original failure, verification, and state are NEVER modified.
-
-    Args:
-        failure: S4 failure reasoning dict (or None on success).
-        verification: S2 verification dict from the original action.
-        state: S3 state dict from the original action.
-        original_tool_name: Registry name of the tool that failed.
-        original_args: Original arguments passed to the tool.
-
     Returns:
-        Recovery result dict with status, reason, action, authorized,
-        attempts, and verification fields.
+        Recovery result dict.
     """
     # Recursion guard
     if is_recovery_in_progress():
@@ -284,7 +242,7 @@ def attempt_recovery(
     if not eligible:
         return _build_result(NOT_ELIGIBLE, eligibility_reason)
 
-    # Step 2: Authorization
+    # Step 2: Explicit Authorization Check
     authorized, auth_reason = check_authorization(
         failure, original_tool_name, original_args
     )
