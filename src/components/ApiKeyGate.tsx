@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ApiKeyGate — first-run onboarding.
  *
  * ELYSIA ships without any API key. On launch we ask the backend whether a key
@@ -72,7 +72,7 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
       {phase === "checking" ? (
         <div className="flex flex-col items-center gap-4 text-white/60">
           <Loader2 className="h-7 w-7 animate-spin" />
-          <span className="text-sm tracking-wide">Starting ELYSIA…</span>
+          <span className="text-sm tracking-wide">Starting Shefali…</span>
         </div>
       ) : (
         <form
@@ -83,9 +83,9 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/30 to-cyan-500/20 ring-1 ring-white/10">
               <KeyRound className="h-6 w-6 text-indigo-200" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">Welcome to ELYSIA</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Welcome to Shefali</h1>
             <p className="mt-2 text-sm leading-relaxed text-white/55">
-              ELYSIA runs on your own Google Gemini API key. Paste it below to get
+              Shefali (Zarya) runs on your own Google Gemini API key. Paste it below to get
               started — it stays on this computer and is never shared.
             </p>
           </div>

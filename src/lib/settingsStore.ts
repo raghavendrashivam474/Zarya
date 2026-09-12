@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ELYSIA Settings Store — persistent user preferences (V2).
  *
  * Establishes the persistence pattern for ELYSIA: settings are mirrored to
@@ -44,7 +44,7 @@ export const GEMINI_VOICES = [
 export const DEFAULT_SETTINGS: ElysiaSettings = {
   autoStart: false,
   wakeWordEnabled: false,
-  wakePhrase: "hey elysia",
+  wakePhrase: "hey shefali",
   micDeviceId: "",
   sensitivity: 60,
   animations: true,

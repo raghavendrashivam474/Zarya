@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { ExternalLink, X, ShieldAlert, Monitor } from "lucide-react";
 
 interface HolographicProjectorProps {
@@ -34,7 +34,7 @@ export const HolographicProjector: React.FC<HolographicProjectorProps> = ({
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </div>
             <div>
-              <h3 className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold">Elysia Holocore Projection Link</h3>
+              <h3 className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold">Shefali Holocore Projection Link</h3>
               <p className="text-sm font-semibold text-white truncate max-w-md">{formattedUrl}</p>
             </div>
           </div>

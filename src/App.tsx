@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { LiveState, ElysiaAudioSession } from "./lib/audio";
 import { ElysiaCoreVisualizer, type ElysiaEmotion } from "./components/ElysiaCoreVisualizer";
 import { type ElysiaSettings, saveSettings, loadSettings } from "./lib/settingsStore";
@@ -657,7 +657,7 @@ export default function App() {
                 </button>
               </div>
               <p className="text-xs text-slate-300 mb-4 font-mono leading-relaxed">
-                Elysia is equipped with dynamic visual modules and browser projectors. Here are clever triggers to try speaking aloud:
+                Shefali is equipped with dynamic visual modules and browser projectors. Here are clever triggers to try speaking aloud:
               </p>
               <div className="space-y-2 text-xs font-serif italic text-cyan-300">
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer font-sans normal-case text-slate-200">
@@ -806,7 +806,7 @@ export default function App() {
               ? "border border-purple-400/50 text-purple-300 hover:scale-105 bg-purple-950/40 shadow-[0_0_30px_rgba(168,85,247,0.3)]"
               : "border border-amber-400/50 text-amber-400 animate-spin bg-black/40"
           }`}
-          title={state === "disconnected" ? "Awake Elysia" : "Sleep core"}
+          title={state === "disconnected" ? "Awake Shefali" : "Sleep core"}
         >
           {state === "disconnected" ? (
             <Power size={22} className="opacity-80" />

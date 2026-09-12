@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ELYSIA Wake Word Detector (V2).
  *
  * Uses the browser-native Web Speech API (webkitSpeechRecognition) for
@@ -15,7 +15,7 @@
  * Public API:
  *   const det = new ElysiaWakeWordDetector();
  *   det.start({ phrase, sensitivity, onTriggered, onState });
- *   det.setPhrase("hey elysia");
+ *   det.setPhrase("hey shefali");
  *   det.setSensitivity(60);
  *   det.stop();
  */
@@ -62,7 +62,7 @@ export interface WakeWordOptions {
 export class ElysiaWakeWordDetector {
   private recognition: SpeechRecognitionLike | null = null;
   private ctor: SpeechRecognitionCtor | null;
-  private phrase = "hey elysia";
+  private phrase = "hey shefali";
   private sensitivity = 60;
   private onTriggered: (() => void) | null = null;
   private onState: ((s: WakeWordState) => void) | null = null;
@@ -94,7 +94,7 @@ export class ElysiaWakeWordDetector {
       this.setState("error");
       return false;
     }
-    this.phrase = (opts.phrase || "hey elysia").toLowerCase().trim();
+    this.phrase = (opts.phrase || "hey shefali").toLowerCase().trim();
     this.sensitivity = opts.sensitivity ?? this.sensitivity;
     this.onTriggered = opts.onTriggered ?? null;
     this.onState = opts.onState ?? null;
@@ -119,7 +119,7 @@ export class ElysiaWakeWordDetector {
 
   /** Change the wake phrase live without a full restart. */
   setPhrase(phrase: string): void {
-    this.phrase = (phrase || "hey elysia").toLowerCase().trim();
+    this.phrase = (phrase || "hey shefali").toLowerCase().trim();
   }
 
   /** Change sensitivity live. */
