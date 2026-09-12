@@ -135,7 +135,9 @@ def run_terminal_command(args: Dict[str, Any]) -> Dict[str, Any]:
     )
     state_cache.record(state_obs)
 
-    return {"result": f"Executed command: {command}", "output": result, "verification": verification, "state": state_obs.to_dict()}
+    from ..failure import reason_about_failure
+    failure_reasoning = reason_about_failure(verification, state_obs.to_dict())
+    return {"result": f"Executed command: {command}", "output": result, "verification": verification, "state": state_obs.to_dict(), "failure": failure_reasoning}
 
 
 @register("provideSudoPassword")

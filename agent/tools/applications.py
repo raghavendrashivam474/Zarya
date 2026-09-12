@@ -179,10 +179,13 @@ def open_application(args: Dict[str, Any]) -> Dict[str, Any]:
     )
     state_cache.record(state_obs)
 
+    from ..failure import reason_about_failure
+    failure_reasoning = reason_about_failure(verification, state_obs.to_dict())
     return {
         "result": f"{spec['label']} opened.",
         "verification": verification,
         "state": state_obs.to_dict(),
+        "failure": failure_reasoning,
     }
 
 

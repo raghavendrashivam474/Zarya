@@ -178,7 +178,9 @@ def create_file(args: Dict[str, Any]) -> Dict[str, Any]:
     )
     state_cache.record(state_obs)
 
-    return {"result": f"Created file: {p}", "path": str(p), "verification": verification, "state": state_obs.to_dict()}
+    from ..failure import reason_about_failure
+    failure_reasoning = reason_about_failure(verification, state_obs.to_dict())
+    return {"result": f"Created file: {p}", "path": str(p), "verification": verification, "state": state_obs.to_dict(), "failure": failure_reasoning}
 
 
 @register("readFile")
