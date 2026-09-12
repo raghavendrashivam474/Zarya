@@ -1,12 +1,12 @@
-# ELYSIA Desktop Control Agent
+﻿# ZARYA Desktop Control Agent
 
-A local Python FastAPI service that gives ELYSIA **JARVIS-style desktop control** —
+A local Python FastAPI service that gives ZARYA **JARVIS-style desktop control** —
 open apps, manage files, control volume, take screenshots, OCR the screen, automate a
 real browser, run code, execute terminal commands, control Google Calendar/Gmail/Tasks,
 manage Hyprland workspaces, and more.
 
-> **This agent does NOT modify ELYSIA's UI, personality, or chat system.** It is a pure
-> backend tool layer that ELYSIA's existing Node bridge (`server.ts`) calls over HTTP.
+> **This agent does NOT modify ZARYA's UI, personality, or chat system.** It is a pure
+> backend tool layer that ZARYA's existing Node bridge (`server.ts`) calls over HTTP.
 
 ---
 
@@ -25,7 +25,7 @@ manage Hyprland workspaces, and more.
 
 ```bash
 # 1. Navigate to the project root
-cd path/to/elysia-ai
+cd path/to/zarya-ai
 
 # 2. Install Python dependencies
 python3 -m pip install -r agent/requirements.txt
@@ -52,13 +52,13 @@ python3 agent/server.py
 python3 -m uvicorn agent.server:app --host 127.0.0.1 --port 8765
 ```
 
-The agent binds to `127.0.0.1:8765`. Then start ELYSIA normally with `npm run dev`.
+The agent binds to `127.0.0.1:8765`. Then start ZARYA normally with `npm run dev`.
 
 ---
 
 ## Browser Modes
 
-Set via `ELYSIA_BROWSER_MODE` env var (in `.env`):
+Set via `ZARYA_BROWSER_MODE` env var (in `.env`):
 
 | Mode | Behavior |
 |------|----------|
@@ -92,7 +92,7 @@ When a command needs `sudo`, the agent returns a `command_id`. The UI shows a pa
 | `getTasks` | List tasks from Google Tasks |
 | `createTask` | Create a new task in Google Tasks |
 
-**Setup**: Place `credentials.json` (Google Cloud OAuth desktop app credentials) in `~/.elysia/google_oauth/`. First use opens a browser for consent. Tokens cached in `~/.elysia/google_oauth/token.json`. If credentials are missing, tools return a setup error.
+**Setup**: Place `credentials.json` (Google Cloud OAuth desktop app credentials) in `~/.zarya/google_oauth/`. First use opens a browser for consent. Tokens cached in `~/.zarya/google_oauth/token.json`. If credentials are missing, tools return a setup error.
 
 ---
 
@@ -258,7 +258,7 @@ On error:
 ### 🤖 Other
 | Tool | Description |
 |---|---|
-| `shutdownElysia` | Gracefully stop the application |
+| `shutdownZarya` | Gracefully stop the application |
 | `enableAutoStart` / `disableAutoStart` / `getAutoStartStatus` | Auto-start on login (Windows) |
 
 ---
@@ -276,7 +276,7 @@ On error:
 ## Architecture
 
 ```
-ELYSIA voice chat → Gemini Live API → server.ts → HTTP POST → agent.server (FastAPI)
+ZARYA voice chat → Gemini Live API → server.ts → HTTP POST → agent.server (FastAPI)
                                                                     ↓
                                                     linux_wayland.py / windows.py
                                                     Playwright / subprocess / Tesseract

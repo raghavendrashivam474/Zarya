@@ -1,7 +1,7 @@
-# Architecture and Technical Stack
+﻿# Architecture and Technical Stack
 
 ## 1. System Flow
-Elysia AI operates on a client-server-agent architecture to separate the UI, the AI reasoning engine, and the dangerous OS-level capabilities.
+Zarya operates on a client-server-agent architecture to separate the UI, the AI reasoning engine, and the dangerous OS-level capabilities.
 
 1. **Frontend (Overlay UI):** Renders the transparent, glassmorphic UI overlay on the desktop. Captures user audio and text inputs.
 2. **Backend Node Server (`server.ts`):** Handles communication with the Google Gemini API, manages configuration (like API keys), and orchestrates requests between the UI and the Python Agent.

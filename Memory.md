@@ -1,7 +1,7 @@
-# Project Memory
+﻿# Project Memory
 
 ## Current State & Context
-- **Project Goal:** Build a fully functional, hyper-premium AI desktop assistant (Elysia).
+- **Project Goal:** Build a fully functional, hyper-premium AI desktop assistant (Zarya).
 - **Environment:** Node server orchestrates the React frontend, and a privileged Python Desktop Agent handles secure OS-level capabilities (like terminal execution and Hyprland/Win32 screen captures).
 
 ## Recent Achievements

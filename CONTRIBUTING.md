@@ -1,4 +1,4 @@
-# Contributing to ELYSIA
+﻿# Contributing to ZARYA
 
 Thanks for your interest! This is a personal project by **Sarang (SarangRao20)**, but contributions and suggestions are welcome.
 
@@ -31,7 +31,7 @@ Thanks for your interest! This is a personal project by **Sarang (SarangRao20)**
 
 ## Reporting Issues
 
-Open an issue at [github.com/SarangRao20/Elysia-AI/issues](https://github.com/SarangRao20/Elysia-AI/issues) with:
+Open an issue at [github.com/SarangRao20/Zarya-AI/issues](https://github.com/SarangRao20/Zarya-AI/issues) with:
 - What you were doing
 - What happened vs what you expected
 - Relevant logs (check browser console + `agent/server.py` output)
