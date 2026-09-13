@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import { GoogleGenAI, Type } from "@google/genai";
-import { Memory, MemoryTransaction } from "./src/lib/memoryTypes";
-import { dataFile } from "./server_paths";
+import { Memory, MemoryTransaction } from "../src/lib/memoryTypes";
+import { dataFile } from "./paths";
 
 const MEMORY_FILE = dataFile("memories.json");
 

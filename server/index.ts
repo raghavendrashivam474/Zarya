@@ -11,7 +11,7 @@ import {
   saveMemories, 
   formatSystemInstructionsWithMemories, 
   processConversationSlice 
-} from "./server_memory";
+} from "./memory";
 import {
   loadReminders,
   addReminder,
@@ -19,16 +19,16 @@ import {
   cancelReminder,
   startReminderTimer,
   setOnReminderFired,
-} from "./server_reminders";
-import { Memory } from "./src/lib/memoryTypes";
-import { Reminder } from "./src/lib/reminderTypes";
+} from "./reminders";
+import { Memory } from "../src/lib/memoryTypes";
+import { Reminder } from "../src/lib/reminderTypes";
 import {
   DATA_DIR,
   dataFile,
   getGeminiApiKey,
   hasGeminiApiKey,
   setGeminiApiKey,
-} from "./server_paths";
+} from "./paths";
 
 dotenv.config();
 
