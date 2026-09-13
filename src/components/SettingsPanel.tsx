@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Settings,
   X,
@@ -159,7 +159,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onChange, onVoiceChan
                       SETTINGS
                     </h3>
                     <p className="text-[9px] font-mono uppercase tracking-widest text-cyan-400 mt-0.5 flex items-center gap-1">
-                      <Sparkles size={10} /> {settings.avatarStyle === "orb" ? "Aegis_Core" : "Elysia_Core"}
+                      <Sparkles size={10} /> {settings.avatarStyle === "orb" ? "Zarya_Mesh" : "Zarya_Core"}
                     </p>
                   </div>
                 </div>
@@ -278,7 +278,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onChange, onVoiceChan
                         <div className="grid grid-cols-2 gap-4">
                           {[
                             { id: "character", label: "Anime Entity", voice: "Aoede", desc: "Video Assets" },
-                            { id: "orb", label: "Aegis Orb", voice: "Charon", desc: "Live API Mesh" }
+                            { id: "orb", label: "Zarya Orb", voice: "Charon", desc: "Live API Mesh" }
                           ].map((a) => (
                             <button
                               key={a.id}
@@ -419,7 +419,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onChange, onVoiceChan
                           <Sparkles size={40} className="text-cyan-400 relative z-10" />
                         </div>
                         <h1 className="text-4xl font-mono text-white mb-2 tracking-[0.2em] uppercase">
-                          {settings.avatarStyle === "orb" ? "Aegis_V2" : "Elysia_V2"}
+                          {settings.avatarStyle === "orb" ? "Zarya_Mesh_V2" : "Zarya_Core_V2"}
                         </h1>
                         <p className="text-xs font-mono text-cyan-600 uppercase tracking-widest max-w-md">
                           Tactical Multi-Modal Desktop Interface
