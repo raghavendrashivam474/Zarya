@@ -1,8 +1,8 @@
-﻿import React, { useEffect, useRef, useState } from "react";
-import { ElysiaAudioSession, LiveState } from "../lib/audio";
+import React, { useEffect, useRef, useState } from "react";
+import { ZaryaAudioSession, LiveState } from "../lib/audio";
 import { Sparkles } from "lucide-react";
 
-export type ElysiaEmotion =
+export type PresenceEmotion =
   | "idle"
   | "happy"
   | "excited"
@@ -15,17 +15,17 @@ export type ElysiaEmotion =
   | "embarrassed"
   | "playful";
 
-interface ElysiaCoreVisualizerProps {
-  session: ElysiaAudioSession | null;
+interface ShefaliPresenceProps {
+  session: ZaryaAudioSession | null;
   state: LiveState;
   themeColor: string; // Violet, crimson, emerald, celestial, gold, rose, charcoal
-  activeEmotion?: ElysiaEmotion;
+  activeEmotion?: PresenceEmotion;
   characterState: "idle" | "thinking" | "talking";
   backgroundVideo?: string;
   avatarStyle: "character" | "orb";
 }
 
-export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
+export const ShefaliPresence: React.FC<ShefaliPresenceProps> = ({
   session,
   state,
   themeColor,
@@ -44,7 +44,7 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
   const [hasError, setHasError] = useState<boolean>(false);
 
   const handleVideoError = (videoName: string) => {
-    console.warn(`[Elysia Web Video] Failed to load video source for: ${videoName}`);
+    console.warn(`[Shefali Presence] Failed to load video source for: ${videoName}`);
     setHasError(true);
   };
 
@@ -56,7 +56,7 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
   const speechVolumeRef = useRef<number>(0);
   const glowRingRef = useRef<number>(0);
   const emotionFlashRef = useRef<number>(0);
-  const lastEmotionRef = useRef<ElysiaEmotion>(activeEmotion);
+  const lastEmotionRef = useRef<PresenceEmotion>(activeEmotion);
 
   // Floating sci-fi background particle arrays
   const particlesRef = useRef<Array<{
@@ -372,14 +372,14 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
 
       {/* Canvas holographic effects behind video */}
       <canvas
-        id="elysia-hologram-living-canvas"
+        id="shefali-hologram-living-canvas"
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-[6]"
       />
 
       {/* 2. Character Videos state crossfade manager (Z-index 10 â€” on top of canvas for crispness) */}
       <div
-        id="elysia-animated-presence"
+        id="shefali-animated-presence"
         className="absolute inset-0 z-10 w-full h-full flex items-center justify-center pointer-events-auto [transform:translateZ(0)]"
       >
         <div className="absolute inset-0 w-full h-full select-none pointer-events-none">
