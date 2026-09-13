@@ -32,6 +32,23 @@ import {
 } from "lucide-react";
 
 export default function App() {
+  // S10.4 Auto-upgrade legacy local settings to character mode if first time loading S10.4
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("zarya.settings.v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.avatarStyle === "orb" && !localStorage.getItem("zarya.s10.4_migrated")) {
+          parsed.avatarStyle = "character";
+          localStorage.setItem("zarya.settings.v1", JSON.stringify(parsed));
+          localStorage.setItem("zarya.s10.4_migrated", "true");
+          window.location.reload();
+        }
+      } else {
+        localStorage.setItem("zarya.s10.4_migrated", "true");
+      }
+    } catch (e) {}
+  }, []);
   const [settings, setSettings] = useState<ZaryaSettings>(loadSettings());
   const [state, setState] = useState<LiveState>("disconnected");
 

@@ -65,7 +65,7 @@ export const DEFAULT_SETTINGS: ZaryaSettings = {
   micDeviceId: "",
   voice: "Charon",
   backgroundVideo: "solid",
-  avatarStyle: "orb",
+  avatarStyle: "character",
   holographicGlow: true,
   visualizerSpeed: 5,
   masterVolume: 1.0,

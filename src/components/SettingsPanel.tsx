@@ -277,7 +277,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onChange, onVoiceChan
                         <label className="block text-xs font-mono tracking-widest text-cyan-500 uppercase">Hologram Archetype</label>
                         <div className="grid grid-cols-2 gap-4">
                           {[
-                            { id: "character", label: "Anime Entity", voice: "Aoede", desc: "Video Assets" },
+                            { id: "character", label: "Shefali Digital Human", voice: "Aoede", desc: "Photorealistic WebM Video Assets" },
                             { id: "orb", label: "Zarya Orb", voice: "Charon", desc: "Live API Mesh" }
                           ].map((a) => (
                             <button
