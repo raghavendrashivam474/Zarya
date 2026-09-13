@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { LiveState, ZaryaAudioSession } from "./lib/audio";
 import { ShefaliPresence, type PresenceEmotion } from "./components/ShefaliPresence";
+import { deriveRuntimeState } from "./components/presence/ShefaliPresenceController";
 import { type ZaryaSettings, saveSettings, loadSettings } from "./lib/settingsStore";
 import type { Memory, MemoryCategory } from "./lib/memoryTypes";
 import { ShefaliWakeWordDetector } from "./lib/wakeWord";
