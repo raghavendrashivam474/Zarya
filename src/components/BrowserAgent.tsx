@@ -269,7 +269,7 @@ export const BrowserAgent: React.FC<BrowserAgentProps> = ({
   useEffect(() => {
     const handleNavigationMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === "NAVIGATE" && event.data.url) {
-        console.log("[Elysia Browser] Same-origin child iframe navigated to:", event.data.url);
+        console.log("[Zarya Browser] Same-origin child iframe navigated to:", event.data.url);
         navigateToUrl(event.data.url);
       }
     };
@@ -282,7 +282,7 @@ export const BrowserAgent: React.FC<BrowserAgentProps> = ({
     if (!actionTrigger) return;
 
     const { type, args, callback } = actionTrigger;
-    console.log(`[Elysia Browser Hub] Automated Voice Trigger: ${type}`, args);
+    console.log(`[Zarya Browser Hub] Automated Voice Trigger: ${type}`, args);
 
     const runVoiceAutomation = async () => {
       try {
@@ -627,7 +627,7 @@ export const BrowserAgent: React.FC<BrowserAgentProps> = ({
         const iframe = iframeRef.current;
         if (iframe && iframe.contentDocument) {
           const bodyTxt = iframe.contentDocument.body?.innerText || "";
-          if (bodyTxt.includes("Elysia Web Proxy Error") || bodyTxt.includes("Failed loading remote website")) {
+          if (bodyTxt.includes("Zarya Web Proxy Error") || bodyTxt.includes("Failed loading remote website")) {
             setDiagnosticStatus("error");
             setDiagnosticReason(bodyTxt);
             setNetworkErrors(prev => [...prev, "Proxy server failed to resolve target host."]);
@@ -647,7 +647,7 @@ export const BrowserAgent: React.FC<BrowserAgentProps> = ({
 
   return (
     <div
-      id="elysia-playwright-automation-hud"
+      id="zarya-playwright-automation-hud"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-2xl animate-fade-in text-left select-none"
     >
       <div className="relative w-full max-w-5xl h-[88vh] flex flex-col rounded-2xl border border-white/[0.06] bg-black/50 backdrop-blur-3xl shadow-[0_0_120px_rgba(13,148,136,0.12)] overflow-hidden">

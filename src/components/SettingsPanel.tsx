@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Settings,
   X,
@@ -12,15 +12,15 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  ElysiaSettings,
+  ZaryaSettings,
   GEMINI_VOICES,
 } from "../lib/settingsStore";
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  settings: ElysiaSettings;
-  onChange: (patch: Partial<ElysiaSettings>) => void;
+  settings: ZaryaSettings;
+  onChange: (patch: Partial<ZaryaSettings>) => void;
   themeColor: string;
   onVoiceChange?: (voice: string) => void;
 }

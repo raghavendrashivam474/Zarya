@@ -1,4 +1,4 @@
-﻿import { spawn } from "child_process";
+import { spawn } from "child_process";
 import express from "express";
 import http from "http";
 import path from "path";
@@ -33,7 +33,7 @@ import {
 dotenv.config();
 
 // ---------------------------------------------------------------------------
-// ELYSIA V2 â€” Logging (Feature 7).
+// Zarya V2 — Logging (Feature 7).
 // Appends timestamped lines to logs/{commands,startup,errors}.log.
 // Never throws; logging failures are swallowed so they can't break the app.
 // ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ const logStartup = (m: string) => appendLog("startup.log", m);
 const logError = (m: string) => appendLog("errors.log", m);
 
 // ---------------------------------------------------------------------------
-// ELYSIA Desktop Control Agent â€” HTTP bridge to the Python FastAPI backend.
+// Zarya Desktop Control Agent — HTTP bridge to the Python FastAPI backend.
 // ---------------------------------------------------------------------------
 const DESKTOP_AGENT_URL = process.env.DESKTOP_AGENT_URL || "http://127.0.0.1:8765";
 const DESKTOP_AGENT_TIMEOUT = 25_000; // ms
@@ -698,8 +698,8 @@ async function startServer() {
             }, true);
 
             // Neutralize parent context locks (frame-busters)
-            window.alert = function(msg) { console.log("[Elysia Browser alert bypassed]:", msg); };
-            window.confirm = function(msg) { console.log("[Elysia Browser confirm bypassed]:", msg); return true; };
+            window.alert = function(msg) { console.log("[Zarya Browser alert bypassed]:", msg); };
+            window.confirm = function(msg) { console.log("[Zarya Browser confirm bypassed]:", msg); return true; };
             window.open = function(url) { window.parent.postMessage({ type: 'NAVIGATE', url: url }, '*'); return null; };
           })();
         </script>
@@ -1569,7 +1569,7 @@ async function startServer() {
             
             // Interruption flag
             if (message.serverContent?.interrupted) {
-              console.log("[Elysia Interrupted!]");
+              console.log("[Zarya Interrupted!]");
               clientWs.send(JSON.stringify({ type: "interrupted" }));
             }
             
@@ -1851,7 +1851,7 @@ async function startServer() {
   }
 
   server.listen(PORT, "0.0.0.0", async () => {
-    logStartup(`ELYSIA V2 server started on http://localhost:${PORT}`);
+    logStartup(`Zarya V2 server started on http://localhost:${PORT}`);
     console.log(`[Server] Running on http://localhost:${PORT}`);
     // Kick off the desktop agent (probe + auto-spawn) immediately on boot.
     ensureDesktopAgent().catch((e) =>

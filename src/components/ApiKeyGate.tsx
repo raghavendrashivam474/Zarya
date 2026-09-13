@@ -1,7 +1,7 @@
-﻿/**
+/**
  * ApiKeyGate — first-run onboarding.
  *
- * ELYSIA ships without any API key. On launch we ask the backend whether a key
+ * Zarya ships without any API key. On launch we ask the backend whether a key
  * is configured (GET /api/config). If not, this full-screen overlay blocks the
  * app until the user pastes their own Google Gemini key, which the backend
  * validates with a live test call and stores in their per-user data folder.

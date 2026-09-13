@@ -1,5 +1,5 @@
 /**
- * Audio handling utility for Elysia Live API Voice stream.
+ * Audio handling utility for Zarya Live API Voice stream.
  * Handles:
  * - 16kHz layout sampling for microphone stream.
  * - Raw Little Endian Int16 PCM translation.
@@ -59,7 +59,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-export class ElysiaAudioSession {
+export class ZaryaAudioSession {
   private ws: WebSocket | null = null;
   
   // Audios contexts (separate to match exact required sample rates)
@@ -168,7 +168,7 @@ export class ElysiaAudioSession {
       this.ws.binaryType = "blob";
 
       this.ws.onopen = async () => {
-        console.log("[Elysia] Connected to server side WS bridge");
+        console.log("[Zarya] Connected to server side WS bridge");
         try {
           // Guard against early user disconnect during connection setup
           if (!this.isActivated) return;
@@ -278,7 +278,7 @@ export class ElysiaAudioSession {
 
           // Handle server-side states
           if (data.type === "status") {
-            console.log("[Elysia WS Status]:", data.status);
+            console.log("[Zarya WS Status]:", data.status);
             if (data.status === "connecting_gemini") {
               // Wait for Gemini Live connection
             } else if (data.status === "connected") {
@@ -294,14 +294,14 @@ export class ElysiaAudioSession {
             this.playAudioPCMChunk(data.audio);
           }
 
-          // Handle interruption signal (e.g. user talked over Elysia)
+          // Handle interruption signal (e.g. user talked over Shefali)
           if (data.type === "interrupted") {
             this.handleInterruption();
           }
 
           // Turn complete
           if (data.type === "turnComplete") {
-            // Once Elysia completes speaking, change visual state back to listening
+            // Once Shefali completes speaking, change visual state back to listening
             setTimeout(() => {
               if (this.activeSources.length === 0 && this.currentState === "speaking") {
                 this.setState("listening");

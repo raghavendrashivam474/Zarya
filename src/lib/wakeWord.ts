@@ -1,9 +1,9 @@
-﻿/**
- * ELYSIA Wake Word Detector (V2).
+/**
+ * Shefali Wake Word Detector (V2).
  *
  * Uses the browser-native Web Speech API (webkitSpeechRecognition) for
  * continuous, always-listening keyword detection. Zero dependencies, runs
- * entirely in the ELYSIA browser tab.
+ * entirely in the Zarya browser tab.
  *
  * Design goals (per V2 spec):
  *   - Very low CPU: relies on the browser's native speech engine (no FFT loop).
@@ -13,7 +13,7 @@
  *   - Activation sound + state callback on detection.
  *
  * Public API:
- *   const det = new ElysiaWakeWordDetector();
+ *   const det = new ShefaliWakeWordDetector();
  *   det.start({ phrase, sensitivity, onTriggered, onState });
  *   det.setPhrase("hey shefali");
  *   det.setSensitivity(60);
@@ -59,7 +59,7 @@ export interface WakeWordOptions {
   onState?: (state: WakeWordState) => void;
 }
 
-export class ElysiaWakeWordDetector {
+export class ShefaliWakeWordDetector {
   private recognition: SpeechRecognitionLike | null = null;
   private ctor: SpeechRecognitionCtor | null;
   private phrase = "hey shefali";
