@@ -1,8 +1,8 @@
-{
-  "name": "elysia",
-  "productName": "ELYSIA",
+﻿{
+  "name": "zarya",
+  "productName": "Zarya",
   "author": "Sarang",
-  "description": "Voice Assistant for Desktop",
+  "description": "Zarya — Personal Desktop Intelligence",
   "homepage": "https://github.com/elysia",
   "private": true,
   "version": "1.0.0",

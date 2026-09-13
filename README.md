@@ -526,7 +526,7 @@ cp .env.local .env
 
 ## How This Was Built
 
-Designed and developed by **Sarang (SarangRao20)** — an independent developer focused on AI-powered desktop automation. Features:
+Zarya is an open-source personal desktop intelligence runtime with deep OS-level integration. Features:
 - Holographic video character system + orb animation mode
 - Persistent memory with AI-powered extraction
 - Cross-platform desktop agent with 91 tools across 22 modules
@@ -545,4 +545,4 @@ Designed and developed by **Sarang (SarangRao20)** — an independent developer 
 
 ---
 
-*Built by Sarang*
+*Zarya Desktop Intelligence*

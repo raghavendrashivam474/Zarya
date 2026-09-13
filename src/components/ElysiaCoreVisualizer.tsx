@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { ElysiaAudioSession, LiveState } from "../lib/audio";
 import { Sparkles } from "lucide-react";
 
@@ -225,7 +225,7 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
 
       const centerX = width / 2;
 
-      // ─── Holographic Canvas Effects ───────────────────────────────
+      // â”€â”€â”€ Holographic Canvas Effects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Particles
       const pCount = particlesRef.current.length;
       for (let i = 0; i < pCount; i++) {
@@ -377,7 +377,7 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
         className="absolute inset-0 w-full h-full pointer-events-none z-[6]"
       />
 
-      {/* 2. Character Videos state crossfade manager (Z-index 10 — on top of canvas for crispness) */}
+      {/* 2. Character Videos state crossfade manager (Z-index 10 â€” on top of canvas for crispness) */}
       <div
         id="elysia-animated-presence"
         className="absolute inset-0 z-10 w-full h-full flex items-center justify-center pointer-events-auto [transform:translateZ(0)]"
@@ -440,9 +440,9 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
                 Please place your character video assets inside the <code className="text-cyan-300 font-mono">/assets</code> directory of your workspace named exactly:
               </p>
               <div className="mt-3 space-y-1.5 text-left font-mono text-[10px] text-cyan-200 bg-white/5 px-4 py-2.5 rounded-xl border border-white/5">
-                <div>• idle.mp4 (State: Idle)</div>
-                <div>• thinking.mp4 (State: Thinking)</div>
-                <div>• talking.mp4 (State: Talking)</div>
+                <div>â€¢ idle.mp4 (State: Idle)</div>
+                <div>â€¢ thinking.mp4 (State: Thinking)</div>
+                <div>â€¢ talking.mp4 (State: Talking)</div>
               </div>
             </div>
           )}
@@ -451,7 +451,7 @@ export const ElysiaCoreVisualizer: React.FC<ElysiaCoreVisualizerProps> = ({
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <img 
                 src="/assets/orb2.gif"
-                alt="Aegis Core" 
+                alt="Zarya Core" 
                 className={`transition-all duration-700 ease-in-out object-contain w-full h-full ${
                   characterState === "idle" ? "scale-90 opacity-90" :
                   characterState === "thinking" ? "scale-75 opacity-70" :
