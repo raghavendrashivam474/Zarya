@@ -1,22 +1,33 @@
-﻿"""
-S6: Verified Multi-Step Work — bounded, evidence-grounded multi-step work execution.
+"""
+S6 / S10: Verified Multi-Step Work — bounded, evidence-grounded work execution.
 
 Consumes structured work plans, validates them, checks authorization boundaries,
-and executes steps sequentially. Integrates with S4 failure reasoning and
-S5 closed-loop recovery at the step level.
+and executes steps sequentially. Integrates with:
+  - S4 failure reasoning
+  - S5 closed-loop recovery at the step level
+  - S10 adaptive work engine for situational reassessment (behind adaptive=True flag)
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .registry import TOOLS, load_all
+from .adaptive_work import (
+    DECISION_ADAPT,
+    DECISION_BLOCK,
+    DECISION_CONTINUE,
+    DECISION_FAIL,
+    DECISION_UNKNOWN,
+    MAX_ADAPTATION_ROUNDS,
+    reassess,
+)
 
 # Ensure tools are loaded when work executor is imported
 load_all()
 
-log = logging.getLogger("elysia.work")
+log = logging.getLogger("zarya.work")
 
 # ---------------------------------------------------------------------------
 # Constants & Bounds
@@ -110,7 +121,7 @@ def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tup
         # S5 closed-loop recovery check
         if recovery and recovery.get("status") == "RECOVERED":
             return STEP_RECOVERED, f"Step failed initially but S5 recovery succeeded: {recovery.get('reason')}"
-        
+
         detail_msg = verification.get("detail", "Step verification failed.")
         if recovery and recovery.get("status") in ("FAILED", "UNKNOWN"):
             detail_msg += f" S5 recovery attempt status: {recovery.get('status')} ({recovery.get('reason')})"
@@ -118,7 +129,7 @@ def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tup
 
     # UNKNOWN step verification
     if unverified_ok:
-        return STEP_SUCCESS, f"Step verification status was UNKNOWN but permitted by unverified_ok=True."
+        return STEP_SUCCESS, "Step verification status was UNKNOWN but permitted by unverified_ok=True."
     return STEP_UNKNOWN, verification.get("detail", "Step verification returned UNKNOWN.")
 
 
@@ -126,14 +137,18 @@ def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tup
 # Core Executor
 # ---------------------------------------------------------------------------
 
-def execute_work(plan: Dict[str, Any], authorized: bool = False) -> Dict[str, Any]:
+def execute_work(
+    plan: Dict[str, Any],
+    authorized: bool = False,
+    adaptive: bool = False,
+) -> Dict[str, Any]:
     """Execute a validated work plan sequentially.
 
     Ensures safety limits, failure isolation, S5 recovery checks,
-    and returns a structured WorkResult.
+    and optional S10 adaptive reassessment when state diverges.
     """
     goal = plan.get("goal", "Execute multi-step task")
-    steps = plan.get("steps", [])
+    initial_steps = plan.get("steps", [])
 
     # Step 1: Pre-execution Plan Validation
     valid, validation_reason = validate_plan(plan)
@@ -144,7 +159,7 @@ def execute_work(plan: Dict[str, Any], authorized: bool = False) -> Dict[str, An
             "summary": f"Plan validation failed: {validation_reason}",
             "completed_steps": [],
             "failed_step": None,
-            "skipped_steps": [s.get("id") for s in steps if isinstance(s, dict) and s.get("id")]
+            "skipped_steps": [s.get("id") for s in initial_steps if isinstance(s, dict) and s.get("id")],
         }
 
     # Step 2: Work Authorization Boundary Check
@@ -155,34 +170,38 @@ def execute_work(plan: Dict[str, Any], authorized: bool = False) -> Dict[str, An
             "summary": "Plan execution rejected: Plan was not authorized.",
             "completed_steps": [],
             "failed_step": None,
-            "skipped_steps": [s["id"] for s in steps]
+            "skipped_steps": [s["id"] for s in initial_steps],
         }
 
-    completed_steps = []
-    failed_step_info = None
-    skipped_steps = [s["id"] for s in steps]
+    completed_steps: List[Dict[str, Any]] = []
+    failed_step_info: Optional[Dict[str, Any]] = None
+    execution_queue: List[Dict[str, Any]] = list(initial_steps)
 
     overall_status = OUTCOME_VERIFIED_SUCCESS
     summary_message = "All steps completed and verified successfully."
 
+    adaptation_round = 0
+    adaptations_log: List[Dict[str, Any]] = []
+
     # Step 3: Sequential execution loop
-    for step in steps:
+    while execution_queue:
+        if len(completed_steps) >= MAX_STEPS:
+            overall_status = OUTCOME_INCOMPLETE
+            summary_message = f"Execution reached maximum step limit ({MAX_STEPS})."
+            break
+
+        step = execution_queue.pop(0)
         step_id = step["id"]
         tool_name = step["tool"]
         args = step.get("args") or {}
         unverified_ok = bool(step.get("unverified_ok", False))
 
-        # Update tracking
-        skipped_steps.remove(step_id)
-
         log.info("Executing step '%s' via tool '%s' with args %s", step_id, tool_name, args)
 
         try:
-            # Synchronous invocation of the registered tool
             tool_handler = TOOLS[tool_name]
             response = tool_handler(args)
         except Exception as exc:
-            # Handle catastrophic tool or unexpected exceptions
             log.exception("Catastrophic error during execution of step '%s'", step_id)
             overall_status = OUTCOME_VERIFIED_FAILURE
             summary_message = f"Halted at step '{step_id}' due to unexpected error: {exc}"
@@ -196,9 +215,9 @@ def execute_work(plan: Dict[str, Any], authorized: bool = False) -> Dict[str, An
                 "failure": {
                     "category": "TERMINAL_ERROR_DETECTED" if tool_name == "runTerminalCommand" else "APPLICATION_VERIFICATION_FAILED",
                     "summary": f"Step raised exception: {exc}",
-                    "confidence": "HIGH"
+                    "confidence": "HIGH",
                 },
-                "recovery": {"status": "NOT_ATTEMPTED", "reason": "Execution crash bypasses recovery."}
+                "recovery": {"status": "NOT_ATTEMPTED", "reason": "Execution crash bypasses recovery."},
             }
             break
 
@@ -212,13 +231,39 @@ def execute_work(plan: Dict[str, Any], authorized: bool = False) -> Dict[str, An
             "verification": response.get("verification"),
             "state": response.get("state"),
             "failure": response.get("failure"),
-            "recovery": response.get("recovery")
+            "recovery": response.get("recovery"),
         }
 
         completed_steps.append(recorded_step)
 
-        # Halt immediately if step did not succeed or recover successfully
+        # Step 5: Evaluate step outcome and check for S10 adaptation if enabled
         if step_status not in (STEP_SUCCESS, STEP_RECOVERED):
+            if adaptive:
+                # Consult S10 Adaptive Work Engine
+                decision_dict = reassess(
+                    goal=goal,
+                    remaining_steps=execution_queue,
+                    last_step_result=recorded_step,
+                    adaptation_round=adaptation_round,
+                )
+                decision = decision_dict.get("decision")
+                reason = decision_dict.get("reason", "")
+                candidate_steps = decision_dict.get("candidate_steps", [])
+
+                if decision == DECISION_ADAPT and candidate_steps:
+                    adaptation_round += 1
+                    adaptations_log.append({
+                        "round": adaptation_round,
+                        "trigger_step": step_id,
+                        "reason": reason,
+                        "injected_steps": [s["id"] for s in candidate_steps],
+                    })
+                    log.info("S10 Adaptation #%d triggered: %s. Injecting %d steps.", adaptation_round, reason, len(candidate_steps))
+                    # Prepend adapted candidate steps to execution queue
+                    execution_queue = candidate_steps + execution_queue
+                    continue
+
+            # Halt if adaptation not enabled or adaptation did not yield alternative
             if step_status == STEP_UNKNOWN:
                 overall_status = OUTCOME_UNKNOWN
                 summary_message = f"Halted at step '{step_id}': outcome is UNKNOWN. {detail_msg}"
@@ -229,14 +274,22 @@ def execute_work(plan: Dict[str, Any], authorized: bool = False) -> Dict[str, An
             failed_step_info = recorded_step
             break
 
-    return {
+    # Calculate skipped steps from remaining queue
+    skipped_steps = [s["id"] for s in execution_queue]
+
+    result: Dict[str, Any] = {
         "goal": goal,
         "overall_status": overall_status,
         "summary": summary_message,
         "completed_steps": completed_steps,
         "failed_step": failed_step_info,
-        "skipped_steps": skipped_steps
+        "skipped_steps": skipped_steps,
     }
+
+    if adaptive:
+        result["adaptations"] = adaptations_log
+
+    return result
 
 
 __all__ = [
@@ -250,5 +303,5 @@ __all__ = [
     "STEP_SUCCESS",
     "STEP_RECOVERED",
     "STEP_FAILURE",
-    "STEP_UNKNOWN"
+    "STEP_UNKNOWN",
 ]
