@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ZaryaAudioSession, LiveState } from "../lib/audio";
 import { Sparkles } from "lucide-react";
+import { RuntimePresenceState, EXPRESSION_OVERLAY_CONFIG } from "./presence/ShefaliPresenceController";
+import { motion, AnimatePresence } from "motion/react";
 
 export type PresenceEmotion =
   | "idle"
@@ -23,6 +25,7 @@ interface ShefaliPresenceProps {
   characterState: "idle" | "thinking" | "talking";
   backgroundVideo?: string;
   avatarStyle: "character" | "orb";
+  runtimeState?: RuntimePresenceState;
 }
 
 export const ShefaliPresence: React.FC<ShefaliPresenceProps> = ({
@@ -33,6 +36,7 @@ export const ShefaliPresence: React.FC<ShefaliPresenceProps> = ({
   characterState,
   backgroundVideo,
   avatarStyle,
+  runtimeState,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
@@ -462,6 +466,78 @@ export const ShefaliPresence: React.FC<ShefaliPresenceProps> = ({
           )}
         </div>
       </div>
+    
+      {/* S10.4: Runtime State Expression Overlay (z-20, above video z-10) */}
+      <AnimatePresence mode="wait">
+        {runtimeState && EXPRESSION_OVERLAY_CONFIG[runtimeState]?.hasOverlay && (
+          <motion.div
+            key={runtimeState}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            className="absolute inset-0 z-20 pointer-events-none"
+          >
+            {/* VERIFIED_SUCCESS: warm emerald glow — only on verified outcome */}
+            {runtimeState === "VERIFIED_SUCCESS" && (
+              <motion.div
+                animate={{ opacity: [0.15, 0.3, 0.15] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[40vw] h-[30vh] bg-gradient-to-t from-emerald-500/30 via-emerald-400/10 to-transparent blur-[50px] rounded-full"
+              />
+            )}
+
+            {/* VERIFIED_FAILURE: cool desaturation + subtle red tint */}
+            {runtimeState === "VERIFIED_FAILURE" && (
+              <div className="absolute inset-0 bg-red-950/8 backdrop-saturate-50" />
+            )}
+
+            {/* UNKNOWN: uncertain amber flicker — NEVER celebratory */}
+            {runtimeState === "UNKNOWN" && (
+              <motion.div
+                animate={{ opacity: [0.02, 0.07, 0.02] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "sineInOut" }}
+                className="absolute inset-0 bg-amber-400/5"
+              />
+            )}
+
+            {/* BLOCKED: muted restrained veil */}
+            {runtimeState === "BLOCKED" && (
+              <div className="absolute inset-0 bg-slate-900/10 backdrop-saturate-75" />
+            )}
+
+            {/* WORKING: subtle violet activity glow */}
+            {runtimeState === "WORKING" && (
+              <motion.div
+                animate={{ opacity: [0.04, 0.1, 0.04] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[50vw] h-[40vh] bg-gradient-to-t from-violet-500/15 via-violet-400/5 to-transparent blur-[50px] rounded-full"
+              />
+            )}
+
+            {/* VERIFYING: focused concentration ring */}
+            {runtimeState === "VERIFYING" && (
+              <motion.div
+                animate={{ scale: [1, 1.03, 1], opacity: [0.06, 0.12, 0.06] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <div className="w-[28vw] h-[28vw] max-w-[300px] max-h-[300px] rounded-full border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.05)]" />
+              </motion.div>
+            )}
+
+            {/* PLANNING: subtle indigo thought pulse */}
+            {runtimeState === "PLANNING" && (
+              <motion.div
+                animate={{ opacity: [0.03, 0.08, 0.03] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "sineInOut" }}
+                className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[30vw] h-[20vh] bg-gradient-to-b from-indigo-400/10 to-transparent blur-[40px] rounded-full"
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
