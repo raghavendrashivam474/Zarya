@@ -18,7 +18,9 @@ import path from "path";
 
 /** Writable per-user data directory. Falls back to cwd in development. */
 export const DATA_DIR: string =
-  process.env.ZARYA_DATA_DIR || process.env.ELYSIA_DATA_DIR || process.cwd();
+  process.env.ZARYA_DATA_DIR ||
+  process.env.ELYSIA_DATA_DIR ||
+  path.join(process.cwd(), "data");
 
 try {
   fs.mkdirSync(DATA_DIR, { recursive: true });

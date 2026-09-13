@@ -17,3 +17,5 @@ s9_baseline_*.txt
 
 # Temporary test output directories
 Desktop/
+
+data/
