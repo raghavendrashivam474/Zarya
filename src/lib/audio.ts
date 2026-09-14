@@ -1,3 +1,14 @@
+export interface RuntimeEventPayload {
+  type: 'runtime_event';
+  version: 1;
+  event: 'work_started' | 'work_completed' | 'work_step_started' | 'work_step_completed';
+  operation_id: string;
+  timestamp: string;
+  state: 'WORKING' | 'VERIFYING' | 'VERIFIED_SUCCESS' | 'VERIFIED_FAILURE' | 'UNKNOWN' | 'PLANNING' | 'BLOCKED';
+  tool: string;
+  payload: Record<string, unknown>;
+}
+
 /**
  * Audio handling utility for Zarya Live API Voice stream.
  * Handles:
@@ -88,6 +99,7 @@ export class ZaryaAudioSession {
   private onMemorySync?: (memories: any[]) => void;
   private onReminder?: (text: string, id: string) => void;
   private onTerminalOutput?: (tool: string, args: any, output: string) => void;
+  private onRuntimeEvent?: (event: RuntimeEventPayload) => void;
   
   private currentState: LiveState = "disconnected";
   private isActivated = false;
@@ -121,6 +133,7 @@ export class ZaryaAudioSession {
     onMemorySync?: (memories: any[]) => void;
     onReminder?: (text: string, id: string) => void;
     onTerminalOutput?: (tool: string, args: any, output: string) => void;
+    onRuntimeEvent?: (event: RuntimeEventPayload) => void;
   }) {
     this.onStateChange = handlers.onStateChange;
     this.onTranscription = handlers.onTranscription;
@@ -129,6 +142,7 @@ export class ZaryaAudioSession {
     this.onMemorySync = handlers.onMemorySync;
     this.onReminder = handlers.onReminder;
     this.onTerminalOutput = handlers.onTerminalOutput;
+    this.onRuntimeEvent = handlers.onRuntimeEvent;
   }
 
   private setState(state: LiveState) {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { LiveState, ZaryaAudioSession } from "./lib/audio";
 import { ShefaliPresence, type PresenceEmotion } from "./components/ShefaliPresence";
-import { deriveRuntimeState } from "./components/presence/ShefaliPresenceController";
+import { deriveRuntimeState, type RuntimePresenceState } from "./components/presence/ShefaliPresenceController";
 import { type ZaryaSettings, saveSettings, loadSettings } from "./lib/settingsStore";
 import type { Memory, MemoryCategory } from "./lib/memoryTypes";
 import { ShefaliWakeWordDetector } from "./lib/wakeWord";
@@ -51,6 +51,7 @@ export default function App() {
   }, []);
   const [settings, setSettings] = useState<ZaryaSettings>(loadSettings());
   const [state, setState] = useState<LiveState>("disconnected");
+  const [runtimeState, setRuntimeState] = useState<RuntimePresenceState | undefined>(undefined);
 
   // Real-time Screen Sharing states
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
@@ -378,6 +379,16 @@ export default function App() {
   // Initialize the audio session handlers once on mount
   useEffect(() => {
     sessionRef.current = new ZaryaAudioSession({
+      onRuntimeEvent: (event) => {
+        console.log("[Zarya Runtime Event]:", event.state, event.event, event.tool);
+        setRuntimeState(event.state);
+        // If operation completed, clear overlay back to resting presence after 3.5s
+        if (event.event === "work_completed") {
+          setTimeout(() => {
+            setRuntimeState((curr) => (curr === event.state ? undefined : curr));
+          }, 3500);
+        }
+      },
       onStateChange: (newState) => {
         setState(newState);
         if (newState === "disconnected") {
