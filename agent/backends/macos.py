@@ -1,4 +1,4 @@
-from .base import WindowManager, AudioController, ClipboardManager, ScreenshotManager, ApplicationLauncher, TerminalManager, OSBackend
+﻿from .base import WindowManager, AudioController, ClipboardManager, ScreenshotManager, ApplicationLauncher, TerminalManager, OSBackend
 from typing import Any, Dict, Optional, Tuple
 import subprocess
 import os
@@ -101,10 +101,10 @@ class MacScreenshotManager(ScreenshotManager):
 
 
 class MacApplicationLauncher(ApplicationLauncher):
-    def launch(self, spec: Dict[str, str]) -> None:
+    def launch(self, spec: Dict[str, str], target: Optional[str] = None) -> None:
         cmd = spec.get("mac_cmd") or spec.get("linux_cmd")
         if cmd:
-            subprocess.Popen(["open", "-a", cmd], close_fds=True, start_new_session=True)
+            args = ["open", "-a", cmd]; (args.append(str(target)) if target else None); subprocess.Popen(args, close_fds=True, start_new_session=True)
 
     def close(self, spec: Dict[str, str], force: bool) -> None:
         cmd = spec.get("mac_cmd") or spec.get("linux_cmd")
@@ -132,3 +132,4 @@ class MacBackend(OSBackend):
         self.screenshot = MacScreenshotManager()
         self.launcher = MacApplicationLauncher()
         self.terminal = MacTerminalManager()
+

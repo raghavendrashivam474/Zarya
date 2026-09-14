@@ -1,5 +1,7 @@
+﻿from __future__ import annotations
+
 import abc
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 class WindowManager(abc.ABC):
     @abc.abstractmethod
@@ -55,7 +57,7 @@ class ScreenshotManager(abc.ABC):
 
 class ApplicationLauncher(abc.ABC):
     @abc.abstractmethod
-    def launch(self, spec: Dict[str, str]) -> None: pass
+    def launch(self, spec: Dict[str, str], target: Optional[str] = None) -> None: pass
     
     @abc.abstractmethod
     def close(self, spec: Dict[str, str], force: bool) -> None: pass

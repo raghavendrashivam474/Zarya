@@ -1,4 +1,4 @@
-from .base import WindowManager, AudioController, ClipboardManager, ScreenshotManager, ApplicationLauncher, TerminalManager, OSBackend
+﻿from .base import WindowManager, AudioController, ClipboardManager, ScreenshotManager, ApplicationLauncher, TerminalManager, OSBackend
 from typing import Any, Dict, Optional, Tuple
 import json
 import io
@@ -141,9 +141,9 @@ class LinuxWaylandScreenshotManager(ScreenshotManager):
 
 
 class LinuxWaylandApplicationLauncher(ApplicationLauncher):
-    def launch(self, spec: Dict[str, str]) -> None:
+    def launch(self, spec: Dict[str, str], target: Optional[str] = None) -> None:
         if "linux_cmd" in spec:
-            subprocess.Popen([spec["linux_cmd"]], shell=False, close_fds=True, start_new_session=True)
+            cmd = [spec["linux_cmd"]]; (cmd.append(str(target)) if target else None); subprocess.Popen(cmd, shell=False, close_fds=True, start_new_session=True)
 
     def close(self, spec: Dict[str, str], force: bool) -> None:
         image = spec.get("linux_image") or spec.get("linux_cmd")
@@ -189,3 +189,4 @@ class LinuxWaylandBackend(OSBackend):
         self.screenshot = LinuxWaylandScreenshotManager()
         self.launcher = LinuxWaylandApplicationLauncher()
         self.terminal = LinuxWaylandTerminalManager()
+

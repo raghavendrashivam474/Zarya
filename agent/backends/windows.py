@@ -1,10 +1,9 @@
-from .base import WindowManager, AudioController, ClipboardManager, ScreenshotManager, ApplicationLauncher, TerminalManager, OSBackend
-from typing import Any, Dict, Optional, Tuple
-import os
-import io
-import time
-import subprocess
+﻿import subprocess
 import shutil
+import time
+import os
+from typing import Any, Dict, List, Optional, Tuple
+from .base import WindowManager, AudioController, ClipboardManager, ScreenshotManager, ApplicationLauncher, TerminalManager, OSBackend
 
 class WindowsWindowManager(WindowManager):
     def get_foreground_window(self) -> Any:
@@ -65,7 +64,6 @@ class WindowsWindowManager(WindowManager):
             except Exception:
                 pass
 
-
 class WindowsAudioController(AudioController):
     def _init_pycaw(self):
         try:
@@ -105,7 +103,6 @@ class WindowsAudioController(AudioController):
             except Exception:
                 pass
         return False
-
 
 class WindowsClipboardManager(ClipboardManager):
     def copy(self) -> None:
@@ -161,20 +158,26 @@ class WindowsScreenshotManager(ScreenshotManager):
         except Exception:
             return None
 
-
 class WindowsApplicationLauncher(ApplicationLauncher):
-    def launch(self, spec: Dict[str, str]) -> None:
+    def launch(self, spec: Dict[str, str], target: Optional[str] = None) -> None:
+        target_str = str(target).strip() if target else ""
         if "exe" in spec:
             exe = spec["exe"]
-            if shutil.which(exe) or exe.lower().endswith(".exe"):
+            cmd = [exe]
+            if target_str:
+                cmd.append(target_str)
+
+            if shutil.which(exe) or exe.lower().endswith(".exe") or exe.lower().endswith(".cmd"):
                 subprocess.Popen(
-                    [exe], shell=False, close_fds=True,
+                    cmd, shell=False, close_fds=True,
                     creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
                 )
             else:
-                subprocess.Popen(f'start "" "{exe}"', shell=True, close_fds=True)
+                arg_part = f' "{target_str}"' if target_str else ""
+                subprocess.Popen(f'start "" "{exe}"{arg_part}', shell=True, close_fds=True)
         elif "shell" in spec:
-            subprocess.Popen(f'start "" {spec["shell"]}', shell=True, close_fds=True)
+            arg_part = f' "{target_str}"' if target_str else ""
+            subprocess.Popen(f'start "" {spec["shell"]}{arg_part}', shell=True, close_fds=True)
         elif "uwp" in spec:
             subprocess.Popen(f'start "" {spec["uwp"]}', shell=True, close_fds=True)
 
