@@ -30,6 +30,35 @@ from typing import Any, Dict, List, Optional
 
 log = logging.getLogger("zarya.artifacts")
 
+# S12.1: Explicit operation categories replace fragile string-matching heuristics.
+# These sets define which tool operations establish, mutate, or read artifacts.
+ARTIFACT_CREATING_OPERATIONS = frozenset({
+    "createFile",
+    "createPythonFile",
+    "writeCodeFile",
+    "copyFile",
+    "downloadFile",
+    "exportFile",
+    "saveAs",
+    "duplicateFile",
+    "extractFile",
+})
+
+ARTIFACT_MUTATING_OPERATIONS = frozenset({
+    "renameFile",
+    "moveFile",
+    "appendFile",
+    "editFile",
+})
+
+ARTIFACT_READING_OPERATIONS = frozenset({
+    "readFile",
+    "listFiles",
+    "searchFiles",
+    "openApplicationTarget",
+    "explicitReference",
+})
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -194,8 +223,11 @@ class ActiveComputerContext:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._artifacts: Dict[str, ArtifactIdentity] = {}  # artifact_id -> identity
+        # The concrete artifact most recently established as the target of an applicable operation.
         self._active_artifact: Optional[ArtifactIdentity] = None
+        # The most recent artifact whose creation was actually established by the runtime.
         self._last_created_artifact: Optional[ArtifactIdentity] = None
+        # The most recent artifact for which verification produced VERIFIED_SUCCESS.
         self._last_verified_artifact: Optional[ArtifactIdentity] = None
         self._active_application: Optional[str] = None
 
@@ -240,8 +272,12 @@ class ActiveComputerContext:
                 self._active_artifact = artifact
             if artifact.verification_status == "VERIFIED_SUCCESS":
                 self._last_verified_artifact = artifact
-            if "create" in artifact.source_operation.lower():
+            if artifact.source_operation in ARTIFACT_CREATING_OPERATIONS:
                 self._last_created_artifact = artifact
+
+    def reset(self) -> None:
+        """Explicit lifecycle reset for session boundaries or test isolation."""
+        self.clear()
 
     def update_from_tool_response(
         self,
@@ -253,6 +289,7 @@ class ActiveComputerContext:
 
         Respects S2 verification: UNKNOWN or failure does NOT establish
         a factual active verified artifact.
+        Preserves logical identity across mutation operations (rename/move).
         """
         if not isinstance(response, dict):
             return None
@@ -262,36 +299,122 @@ class ActiveComputerContext:
         v_is_success = v_status == "VERIFIED_SUCCESS"
 
         with self._lock:
-            # 1. File tools: createFile, readFile, renameFile, writeCodeFile, createPythonFile
-            if tool_name in (
-                "createFile",
-                "createPythonFile",
-                "writeCodeFile",
-                "readFile",
-                "renameFile",
-                "moveFile",
-            ):
+            # 1. Artifact-mutating operations: renameFile, moveFile
+            if tool_name in ARTIFACT_MUTATING_OPERATIONS:
+                new_path_str = response.get("path")
+                old_path_str = args.get("path") or args.get("filepath")
+                if not new_path_str:
+                    return None
+
+                new_canonical = canonicalize_locator(str(new_path_str), artifact_type="file")
+                old_canonical = canonicalize_locator(str(old_path_str), artifact_type="file") if old_path_str else ""
+
+                # Check if we already have an artifact representing the source file
+                existing_artifact: Optional[ArtifactIdentity] = None
+                if old_canonical:
+                    for art in self._artifacts.values():
+                        if art.canonical_locator == old_canonical:
+                            existing_artifact = art
+                            break
+
+                if existing_artifact is not None:
+                    # PRESERVE IDENTITY: Mutate locator and display name of existing artifact
+                    prev_locators = list(existing_artifact.metadata.get("previous_locators", []))
+                    if existing_artifact.canonical_locator not in prev_locators:
+                        prev_locators.append(existing_artifact.canonical_locator)
+
+                    existing_artifact.canonical_locator = new_canonical
+                    existing_artifact.display_name = Path(new_canonical).name or new_canonical
+                    existing_artifact.source_operation = tool_name
+                    existing_artifact.verification_status = v_status
+                    if v_is_success:
+                        existing_artifact.last_verified_at = _now_iso()
+                    existing_artifact.metadata["previous_locators"] = prev_locators
+                    existing_artifact.metadata["last_mutation_args"] = args
+
+                    self._active_artifact = existing_artifact
+                    if v_is_success:
+                        self._last_verified_artifact = existing_artifact
+
+                    log.info(
+                        "S12.1 ActiveContext: preserved identity %s across %s -> %s",
+                        existing_artifact.artifact_id,
+                        tool_name,
+                        new_canonical,
+                    )
+                    return existing_artifact
+                else:
+                    # New artifact if we did not have prior record
+                    eff_v_status = "VERIFIED_SUCCESS" if v_is_success else "UNKNOWN"
+                    artifact = ArtifactIdentity.create_file_artifact(
+                        path=new_canonical,
+                        source_operation=tool_name,
+                        verification_status=eff_v_status,
+                        metadata={"args": args, "mutated_from": old_canonical},
+                    )
+                    self.record_artifact(artifact, set_active=True)
+                    return artifact
+
+            # 2. Artifact-creating operations: createFile, createPythonFile, writeCodeFile, etc.
+            elif tool_name in ARTIFACT_CREATING_OPERATIONS:
                 path_str = response.get("path") or args.get("path") or args.get("filepath")
                 if path_str:
                     canonical = canonicalize_locator(str(path_str), artifact_type="file")
-                    # If verification succeeded or tool read file successfully
-                    if v_is_success or (tool_name == "readFile" and "result" in response):
-                        eff_v_status = "VERIFIED_SUCCESS" if v_is_success else "UNKNOWN"
+                    # If verification succeeded
+                    if v_is_success:
                         artifact = ArtifactIdentity.create_file_artifact(
                             path=canonical,
                             source_operation=tool_name,
-                            verification_status=eff_v_status,
+                            verification_status="VERIFIED_SUCCESS",
                             metadata={"args": args},
                         )
                         self.record_artifact(artifact, set_active=True)
                         log.info(
-                            "S12 ActiveContext: set active file artifact '%s' (verified=%s)",
+                            "S12.1 ActiveContext: set active created artifact '%s' (VERIFIED_SUCCESS)",
                             canonical,
-                            eff_v_status,
+                        )
+                        return artifact
+                    elif "error" not in response and "result" in response:
+                        # Operation finished without explicit verification failure (e.g. unverified execution)
+                        artifact = ArtifactIdentity.create_file_artifact(
+                            path=canonical,
+                            source_operation=tool_name,
+                            verification_status="UNKNOWN",
+                            metadata={"args": args},
+                        )
+                        self.record_artifact(artifact, set_active=True)
+                        log.info(
+                            "S12.1 ActiveContext: set active created artifact '%s' (UNKNOWN)",
+                            canonical,
                         )
                         return artifact
 
-            # 2. Application tools: openApplication
+            # 3. Artifact-reading operations: readFile
+            elif tool_name in ARTIFACT_READING_OPERATIONS or tool_name == "readFile":
+                path_str = response.get("path") or args.get("path") or args.get("filepath")
+                if path_str and "result" in response and "error" not in response:
+                    canonical = canonicalize_locator(str(path_str), artifact_type="file")
+                    # Check if already tracked
+                    existing_artifact = None
+                    for art in self._artifacts.values():
+                        if art.canonical_locator == canonical:
+                            existing_artifact = art
+                            break
+
+                    if existing_artifact is not None:
+                        self._active_artifact = existing_artifact
+                        return existing_artifact
+                    else:
+                        artifact = ArtifactIdentity.create_file_artifact(
+                            path=canonical,
+                            source_operation=tool_name,
+                            verification_status="UNKNOWN",
+                            metadata={"args": args},
+                        )
+                        self.record_artifact(artifact, set_active=True)
+                        return artifact
+
+            # 4. Application tools: openApplication
             elif tool_name == "openApplication":
                 app_name = args.get("name") or args.get("application") or ""
                 target_arg = args.get("target") or args.get("target_path") or args.get("path")
@@ -308,6 +431,13 @@ class ActiveComputerContext:
                 # If the app was opened with a concrete target file, preserve that file as active
                 if target_arg:
                     target_canonical = canonicalize_locator(str(target_arg), artifact_type="file")
+                    # Check if already tracked
+                    for art in self._artifacts.values():
+                        if art.canonical_locator == target_canonical:
+                            self._active_artifact = art
+                            log.info("S12.1 ActiveContext: existing file target preserved via app launch: '%s'", target_canonical)
+                            return art
+
                     file_artifact = ArtifactIdentity.create_file_artifact(
                         path=target_canonical,
                         source_operation="openApplicationTarget",
@@ -315,7 +445,7 @@ class ActiveComputerContext:
                         metadata={"opened_with": app_name},
                     )
                     self.record_artifact(file_artifact, set_active=True)
-                    log.info("S12 ActiveContext: active file target linked via app launch: '%s'", target_canonical)
+                    log.info("S12.1 ActiveContext: active file target linked via app launch: '%s'", target_canonical)
                     return file_artifact
 
         return None
