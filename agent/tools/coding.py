@@ -1,19 +1,12 @@
-"""
-Coding assistance: create code files, run Python scripts, scaffold projects.
-
-  createPythonFile   -> write a .py file (uses createFile semantics w/ safety)
-  writeCodeFile      -> write an arbitrary-language file with proper extension
-  createProjectFolder-> make a folder structure (with optional subfolders)
-  runPythonScript    -> execute a .py file with the known-good interpreter,
-                        capturing stdout/stderr and exit code.
-
-The Python interpreter used for running scripts is auto-detected so it works
-even when the bare `python` shim is broken (common on this machine).
+﻿"""
+Coding tools: create and run Python scripts, scaffold simple projects.
+S12: Context-aware code file artifacts.
 """
 
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -21,10 +14,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..registry import ToolError, register
-from .files import _ensure_safe
+from .files import _ensure_safe, HOME
+from ..artifacts import active_context
 
-
-# Extension map for writeCodeFile.
 LANG_EXT: Dict[str, str] = {
     "python": "py",
     "py": "py",
@@ -97,7 +89,7 @@ def create_python_file(args: Dict[str, Any]) -> Dict[str, Any]:
         raise ToolError(f"File already exists: {p}. Pass overwrite=true to replace.")
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(str(content) + ("" if str(content).endswith("\n") else "\n"), encoding="utf-8")
-    return {"result": f"Created Python file: {p}", "path": str(p)}
+    resp = {"result": f"Created Python file: {p}", "path": str(p)}; active_context.update_from_tool_response("createPythonFile", args, resp); return resp
 
 
 @register("writeCodeFile")
@@ -117,7 +109,7 @@ def write_code_file(args: Dict[str, Any]) -> Dict[str, Any]:
         raise ToolError(f"File already exists: {p}. Pass overwrite=true to replace.")
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(str(content), encoding="utf-8")
-    return {"result": f"Wrote {language} file: {p}", "path": str(p)}
+    resp = {"result": f"Wrote {language} file: {p}", "path": str(p)}; active_context.update_from_tool_response("writeCodeFile", args, resp); return resp
 
 
 @register("createProjectFolder")
@@ -200,9 +192,9 @@ def run_python_script(args: Dict[str, Any]) -> Dict[str, Any]:
     err = (proc.stderr or "")
     # Trim large outputs.
     if len(out) > 8000:
-        out = out[:8000] + "…[truncated]"
+        out = out[:8000] + "â€¦[truncated]"
     if len(err) > 4000:
-        err = err[:4000] + "…[truncated]"
+        err = err[:4000] + "â€¦[truncated]"
     status = "completed successfully" if proc.returncode == 0 else f"exited with code {proc.returncode}"
     return {
         "result": f"Ran {p.name}: {status}.",
@@ -218,3 +210,4 @@ __all__ = [
     "create_project_folder",
     "run_python_script",
 ]
+
