@@ -1,4 +1,4 @@
-export interface RuntimeEventPayload {
+﻿export interface RuntimeEventPayload {
   type: 'runtime_event';
   version: 1;
   event: 'work_started' | 'work_completed' | 'work_step_started' | 'work_step_completed';
@@ -349,6 +349,13 @@ export class ZaryaAudioSession {
             }
           }
 
+          // S10.5 / S11: Handle Authoritative Runtime & Step Events
+          if (data.type === "runtime_event") {
+            if (this.onRuntimeEvent) {
+              this.onRuntimeEvent(data);
+            }
+          }
+
           // Handle Tool Calling
           if (data.type === "toolCall") {
             const { callId, name, args } = data;
@@ -521,3 +528,4 @@ export class ZaryaAudioSession {
     this.outputGainNode = null;
   }
 }
+

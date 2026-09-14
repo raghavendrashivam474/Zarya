@@ -1,5 +1,5 @@
-"""
-S6 / S10: Verified Multi-Step Work — bounded, evidence-grounded work execution.
+﻿"""
+S6 / S10: Verified Multi-Step Work â€” bounded, evidence-grounded work execution.
 
 Consumes structured work plans, validates them, checks authorization boundaries,
 and executes steps sequentially. Integrates with:
@@ -11,7 +11,7 @@ and executes steps sequentially. Integrates with:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .registry import TOOLS, load_all
 from .adaptive_work import (
@@ -137,10 +137,41 @@ def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tup
 # Core Executor
 # ---------------------------------------------------------------------------
 
+
+def _emit_step_event(
+    callback: Optional[Callable[[Dict[str, Any]], None]],
+    event_type: str,
+    step_id: str,
+    tool_name: str,
+    step_index: int,
+    total_steps: int,
+    state: str,
+    payload: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Safely invoke step callback with authoritative execution data.
+
+    Guarantees failure isolation: callback exceptions never interrupt work execution.
+    """
+    if callback is None:
+        return
+    try:
+        event = {
+            "event": event_type,
+            "step_id": step_id,
+            "tool": tool_name,
+            "step_index": step_index,
+            "total_steps": total_steps,
+            "state": state,
+            "payload": payload or {},
+        }
+        callback(event)
+    except Exception as exc:
+        log.warning("Step callback failed for event '%s' on step '%s': %s", event_type, step_id, exc)
 def execute_work(
     plan: Dict[str, Any],
     authorized: bool = False,
     adaptive: bool = False,
+    step_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
     """Execute a validated work plan sequentially.
 
@@ -198,6 +229,17 @@ def execute_work(
 
         log.info("Executing step '%s' via tool '%s' with args %s", step_id, tool_name, args)
 
+        _emit_step_event(
+            callback=step_callback,
+            event_type="work_step_started",
+            step_id=step_id,
+            tool_name=tool_name,
+            step_index=len(completed_steps),
+            total_steps=len(initial_steps),
+            state="WORKING",
+            payload={"args": args},
+        )
+
         try:
             tool_handler = TOOLS[tool_name]
             response = tool_handler(args)
@@ -235,6 +277,27 @@ def execute_work(
         }
 
         completed_steps.append(recorded_step)
+
+        # Map step status to authoritative runtime event state
+        event_state = "VERIFIED_SUCCESS" if step_status in (STEP_SUCCESS, STEP_RECOVERED) else (
+            "UNKNOWN" if step_status == STEP_UNKNOWN else "VERIFIED_FAILURE"
+        )
+
+        _emit_step_event(
+            callback=step_callback,
+            event_type="work_step_completed",
+            step_id=step_id,
+            tool_name=tool_name,
+            step_index=len(completed_steps) - 1,
+            total_steps=len(initial_steps),
+            state=event_state,
+            payload={
+                "status": step_status,
+                "detail": detail_msg,
+                "verification": response.get("verification"),
+                "recovery": response.get("recovery"),
+            },
+        )
 
         # Step 5: Evaluate step outcome and check for S10 adaptation if enabled
         if step_status not in (STEP_SUCCESS, STEP_RECOVERED):

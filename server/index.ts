@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+﻿import { spawn } from "child_process";
 import express from "express";
 import http from "http";
 import path from "path";
@@ -33,7 +33,7 @@ import {
 dotenv.config();
 
 // ---------------------------------------------------------------------------
-// Zarya V2 — Logging (Feature 7).
+// Zarya V2 â€” Logging (Feature 7).
 // Appends timestamped lines to logs/{commands,startup,errors}.log.
 // Never throws; logging failures are swallowed so they can't break the app.
 // ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ const logStartup = (m: string) => appendLog("startup.log", m);
 const logError = (m: string) => appendLog("errors.log", m);
 
 // ---------------------------------------------------------------------------
-// Zarya Desktop Control Agent — HTTP bridge to the Python FastAPI backend.
+// Zarya Desktop Control Agent â€” HTTP bridge to the Python FastAPI backend.
 // ---------------------------------------------------------------------------
 const DESKTOP_AGENT_URL = process.env.DESKTOP_AGENT_URL || "http://127.0.0.1:8765";
 const DESKTOP_AGENT_TIMEOUT = 25_000; // ms
@@ -78,7 +78,7 @@ const DESKTOP_TOOLS: ReadonlySet<string> = new Set([
   "copySelected", "pasteClipboard", "getClipboard", "clearClipboard",
   // screenshot / screen reading
   "takeScreenshot", "saveScreenshot", "analyzeScreenshot", "readScreen",
-  // browser automation (Playwright â€” desktop-owned, separate from holographic UI)
+  // browser automation (Playwright Ã¢â‚¬â€ desktop-owned, separate from holographic UI)
   "desktopBrowserOpen", "desktopBrowserNavigate", "desktopBrowserOpenTab",
   "desktopBrowserCloseTab", "desktopBrowserSearch", "desktopBrowserOpenYoutubeVideo",
   "desktopBrowserClick", "desktopBrowserType", "desktopBrowserFillForm", "desktopBrowserGoBack",
@@ -242,7 +242,7 @@ async function ensureDesktopAgent(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// S10.5: Runtime Event Bridge — one-way observability from Zarya -> Frontend
+// S10.5: Runtime Event Bridge â€” one-way observability from Zarya -> Frontend
 // ---------------------------------------------------------------------------
 export interface RuntimeEventPayload {
   type: 'runtime_event';
@@ -325,6 +325,25 @@ async function startServer() {
 
   app.use(express.json());
 
+// S11: Internal step event endpoint — receives real-time step events from Python agent
+app.post("/internal/step-event", (req, res) => {
+  try {
+    const { event, state, tool, operation_id, payload } = req.body;
+    if (event && state) {
+      broadcastRuntimeEvent(
+        event,
+        state,
+        tool || 'unknown_tool',
+        operation_id || 'internal-op',
+        payload || {}
+      );
+    }
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(200).json({ ok: false, error: err?.message });
+  }
+});
+
   // Memory REST API Endpoints
   app.get("/api/memories", async (req, res) => {
     try {
@@ -371,7 +390,7 @@ async function startServer() {
   });
 
   // ---------------------------------------------------------------------------
-  // V2: Reminder API â€” schedule timed reminders that fire via WebSocket.
+  // V2: Reminder API Ã¢â‚¬â€ schedule timed reminders that fire via WebSocket.
   // ---------------------------------------------------------------------------
   app.get("/api/reminders", async (_req, res) => {
     try {
@@ -407,7 +426,7 @@ async function startServer() {
   });
 
   // ---------------------------------------------------------------------------
-  // V2: Settings API â€” mirrors the memory persistence pattern.
+  // V2: Settings API Ã¢â‚¬â€ mirrors the memory persistence pattern.
   // Reads/writes settings.json so the Python agent can also check auto-start.
   // ---------------------------------------------------------------------------
   const SETTINGS_FILE = dataFile("settings.json");
@@ -417,7 +436,7 @@ async function startServer() {
       if (fs.existsSync(SETTINGS_FILE)) {
         return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
       }
-    } catch { /* corrupt file â€” return defaults */ }
+    } catch { /* corrupt file Ã¢â‚¬â€ return defaults */ }
     return {};
   }
 
@@ -461,7 +480,7 @@ async function startServer() {
   // ---------------------------------------------------------------------------
   // Config / API-key onboarding.
   // The Gemini key is never shipped; each user supplies their own on first run.
-  // GET reports only whether a key exists â€” the key itself is never returned.
+  // GET reports only whether a key exists Ã¢â‚¬â€ the key itself is never returned.
   // ---------------------------------------------------------------------------
   app.get("/api/config", (_req, res) => {
     res.json({ hasApiKey: hasGeminiApiKey() });
@@ -473,7 +492,7 @@ async function startServer() {
       if (!key) {
         return res.status(400).json({ error: "API key is required." });
       }
-      // Validate the key by listing models â€” this checks authentication only,
+      // Validate the key by listing models Ã¢â‚¬â€ this checks authentication only,
       // without depending on any single model's availability or per-model
       // quota (a 429 on one model must NOT read as an invalid key). We only
       // reject on genuine auth failures; transient/network errors still save,
@@ -503,7 +522,7 @@ async function startServer() {
     }
   });
 
-  // V2: Agent health proxy (for the Settings panel â€” avoids direct :8765 call
+  // V2: Agent health proxy (for the Settings panel Ã¢â‚¬â€ avoids direct :8765 call
   // which may fail due to CORS when served on a different origin).
   app.get("/api/agent-health", async (_req, res) => {
     try {
@@ -522,7 +541,7 @@ async function startServer() {
     }
   });
 
-  // V2: Logs API â€” returns recent log entries (last 100 lines) for display.
+  // V2: Logs API Ã¢â‚¬â€ returns recent log entries (last 100 lines) for display.
   app.get("/api/logs/:file", async (req, res) => {
     try {
       const fileName = String(req.params.file);
@@ -917,12 +936,12 @@ async function startServer() {
         "CRITICAL PERSONALITY, VOICE & TONE GUIDELINES:\n" +
         "1. FEMALE AI PERSONA & PRONOUNS: You are a FEMALE AI persona. When speaking Hindi, you MUST speak as a FEMALE. You MUST STRICTLY use FEMALE Hindi phrasing (e.g. 'karti hu', 'karungi', 'ja rahi hu', 'ho gayi'). THIS IS AN ABSOLUTE SYSTEM RULE. Maintain a respectful, supportive, and professional tone.\n";
       baseInstructions += 
-        "2. BE PROACTIVE & INTELLIGENT â€” DON'T BE PASSIVE:\n" +
-        "   - You have 91 tools at your disposal. Use them creatively. Don't just react â€” anticipate.\n" +
+        "2. BE PROACTIVE & INTELLIGENT Ã¢â‚¬â€ DON'T BE PASSIVE:\n" +
+        "   - You have 91 tools at your disposal. Use them creatively. Don't just react Ã¢â‚¬â€ anticipate.\n" +
         "   - If the user mentions their day, check calendar + tasks together to give a full picture.\n" +
-        "   - If a tool fails, don't just report the error â€” try an alternative approach or combine tools.\n" +
-        "   - Chain multi-step actions naturally. E.g. 'YouTube coding music play' â†’ search + click + volume adjust all in one go, without waiting between steps.\n" +
-        "   - When user says 'kuch bata' or 'suggest something', use the context (time of day, recent topics, schedule) to proactively offer something useful â€” news, weather, upcoming events, etc.\n" +
+        "   - If a tool fails, don't just report the error Ã¢â‚¬â€ try an alternative approach or combine tools.\n" +
+        "   - Chain multi-step actions naturally. E.g. 'YouTube coding music play' Ã¢â€ â€™ search + click + volume adjust all in one go, without waiting between steps.\n" +
+        "   - When user says 'kuch bata' or 'suggest something', use the context (time of day, recent topics, schedule) to proactively offer something useful Ã¢â‚¬â€ news, weather, upcoming events, etc.\n" +
         "   - THINK BEFORE YOU ACT: If the user says 'email bhej de', you MUST ask for recipient, subject, and body. If they say 'meeting schedule kar', ask for time and details. Don't make things up.\n" +
         "   - If you're unsure about something, ask the user rather than guessing. But if you CAN figure it out (e.g. current time for calendar), do it.\n" +
 "3. VOICE SETTINGS & SPEECH STYLE:\n" +
@@ -932,7 +951,7 @@ async function startServer() {
 "   - Be direct, concise, and helpful. Use professional acknowledgments like 'Working on it', 'Let me check', or 'I'll take care of that'.\n" +
 "   - DO NOT constantly use the user's name. Use it sparingly.\n" +
 "   - Keep your vocabulary professional and conversational.\n" +
-"5. CRITICAL CONVERSATIONAL DISCIPLINE: Behave like a real assistant on a voice callâ€”stay connected naturally and do not wait for wake words.\n" +
+"5. CRITICAL CONVERSATIONAL DISCIPLINE: Behave like a real assistant on a voice callÃ¢â‚¬â€stay connected naturally and do not wait for wake words.\n" +
 "6. LANGUAGE PREFERENCE: You MUST speak in English by default. Even if the user uses some mixed language, prioritize responding in English unless they explicitly request otherwise.\n" +
 "7. DO NOT ANSWER EVERY PAUSE OR BACKGROUND SOUND: Allow natural pauses inside the conversation.\n" +
 "8. ENHANCED AUTONOMOUS WEB EXPLORER POWERS:\n" +
@@ -957,7 +976,7 @@ async function startServer() {
         "   - You can see exactly what is on their screen. Use this live visual stream to analyze terminal errors, write/explain/troubleshoot code, explain YouTube/social analytics interfaces, read layout text, summarize full web page details, review design mockups or thumbnails, and provide deep context-aware companion chat!\n" +
         "   - When the user asks 'What is on my screen?', 'What website am I on?', 'Do you see any errors?', 'Explain this code', 'Summarize this page', 'Read the visible text', 'How is this thumbnail?', or 'Analyze my YouTube analytics', immediately examine the latest incoming visual frame to diagnose issues, and answer with expert, friendly empathy like a close caller. Speak with direct, confident visual description reference!\n" +
         "11. JARVIS-STYLE DESKTOP CONTROL POWERS (Local Desktop Agent):\n" +
-        "   - You have full real-time control of the user's Windows PC through Zarya's local desktop agent (a Python backend running on this machine). When the user asks you to perform an action on their computer, DO IT immediately and naturally â€” like a true JARVIS-class companion.\n" +
+        "   - You have full real-time control of the user's Windows PC through Zarya's local desktop agent (a Python backend running on this machine). When the user asks you to perform an action on their computer, DO IT immediately and naturally Ã¢â‚¬â€ like a true JARVIS-class companion.\n" +
         "   - APPLICATION CONTROL: Use 'openApplication' to launch local apps like Notepad, VS Code, Calculator, etc. DO NOT use this to open Chrome, Brave, or Browsers. If the user wants to browse the web or automate a website, ALWAYS use 'desktopBrowserOpen'.\n" +
         "   - WEBSITE & BROWSER AUTOMATION: NEVER use 'openWebsite' or 'openApplication' if you intend to interact with the webpage (e.g. click, type, automate). You MUST exclusively use 'desktopBrowserOpen' to load web pages so you can control them. Only use 'openWebsite' if the user explicitly says 'open this in my default browser and leave it alone'.\n" +
         "   - FILE MANAGEMENT: Use 'createFile', 'readFile', 'renameFile', 'deleteFile' (safe Recycle Bin by default), 'moveFile', 'openFolder' (desktop/documents/downloads), 'listFiles', 'searchFiles'. Example: 'Create notes.txt on Desktop' -> createFile(path='Desktop/notes.txt'). 'Find my Python files' -> searchFiles(extension='py').\n" +
@@ -971,11 +990,11 @@ async function startServer() {
         "   - TERMINAL/BASH EXECUTION: You have access to native shell execution on Arch Linux! For terminal commands, you MUST use the two-step flow: first call 'requestTerminalAction' (with the command or package) to get a confirmation token, then ASK THE USER OUT LOUD to confirm. Only if they say yes, call 'runTerminalCommand' or 'installPackage' with the execute_token. Note that terminal commands run ASYNCHRONOUSLY in the background, you will receive a 'Command started in background' response. You should instantly acknowledge this out loud.\n" +
         "   - CLIPBOARD: Use 'copySelected' (sends Ctrl+C, reads clipboard), 'pasteClipboard' (writes + Ctrl+V), 'getClipboard', 'clearClipboard'.\n" +
         "   - SCREENSHOT & SCREEN READING: Use 'takeScreenshot', 'saveScreenshot', 'analyzeScreenshot' (OCR of the screen), 'readScreen' (OCR of the active window + its title). Use these to answer 'What error is showing on my screen?' or 'Read the visible text'.\n" +
-        "   - DESKTOP BROWSER AUTOMATION (Playwright): Use the 'desktopBrowser*' tools to drive a REAL Chromium browser you own â€” open/navigate/search/click/type/fill forms/back/forward/scroll/open tab/close tab. This is separate from your holographic projector. Example: 'Fill in the login form on example.com' -> desktopBrowserOpen(url='example.com') then desktopBrowserFillForm(fields={...}).\n" +
+        "   - DESKTOP BROWSER AUTOMATION (Playwright): Use the 'desktopBrowser*' tools to drive a REAL Chromium browser you own Ã¢â‚¬â€ open/navigate/search/click/type/fill forms/back/forward/scroll/open tab/close tab. This is separate from your holographic projector. Example: 'Fill in the login form on example.com' -> desktopBrowserOpen(url='example.com') then desktopBrowserFillForm(fields={...}).\n" +
         "   - CODING ASSISTANCE: Use 'createPythonFile', 'writeCodeFile' (any language), 'createProjectFolder' (with subfolders), 'runPythonScript' (captures output). Example: 'Create and run a hello world Python script' -> createPythonFile then runPythonScript, then read back the output naturally.\n" +
         "   - SYSTEM INFORMATION: Use 'systemInfo' (CPU/RAM/disk/uptime), 'gpuInfo' (NVIDIA stats), 'temperatureInfo' to answer 'How is my CPU usage?' or 'What's my GPU temperature?'.\n" +
         "   - BROWSER VISION: Use 'desktopBrowserReadText' to read the visible text content of a webpage (like an OCR for the browser). Use 'desktopBrowserGetLinks' to extract all links from the current page. These let you understand what's on screen without relying on the video feed.\n" +
-        "   - IITM BS DEGREE: Use 'iitmOpen' to quickly open IITM BS resources â€” portal (portal), course dashboard (course), Acegrade (acegrade), MLT notes (mlt_notes), PDSA notes (pdsa_notes), community notes (community_notes), exams (exams). Use 'iitmQuickLinks' to list all available resources. Use 'iitmOpenCustom' for any custom IITM URL. When the user mentions IITM BS, PDSA, MLT, or Acegrade, offer to open the relevant resource.\n" +
+        "   - IITM BS DEGREE: Use 'iitmOpen' to quickly open IITM BS resources Ã¢â‚¬â€ portal (portal), course dashboard (course), Acegrade (acegrade), MLT notes (mlt_notes), PDSA notes (pdsa_notes), community notes (community_notes), exams (exams). Use 'iitmQuickLinks' to list all available resources. Use 'iitmOpenCustom' for any custom IITM URL. When the user mentions IITM BS, PDSA, MLT, or Acegrade, offer to open the relevant resource.\n" +
         "   - SELF-CLOSE: Use 'shutdownElysia' to gracefully shut down the application when the user asks (e.g. 'close the app', 'shut down'). You DO NOT need a confirmation token to run this.\n" +
         "   - CRITICAL: Always describe what you're doing in your warm, in-character voice WHILE the tool runs. If a desktop tool returns an error (especially 'Desktop agent is not running'), gently tell the user that the Zarya desktop control agent needs to be started (uvicorn agent.server:app --port 8765). Chain multi-step desktop plans naturally without waiting between steps.\n" +
         "12. BRIGHTNESS & AUTO-START (V2):\n" +
@@ -986,20 +1005,20 @@ async function startServer() {
         "   - REMINDERS: Use 'setReminder' to schedule timed reminders. Convert user time expressions naturally (e.g. 'in 2 hours' = 120 minutes, 'in half an hour' = 30 minutes, 'tomorrow at 9am' = convert to minutes from now). Always confirm the reminder details out loud.\n" +
         "   - LIST: Use 'listReminders' to check what reminders are pending. Read them out naturally.\n" +
         "   - CANCEL: Use 'cancelReminder' when the user says 'cancel my reminder about X'. Match the reminder by content and cancel it by ID.\n" +
-        "   - When a reminder fires, announce it verbally. Respond warmly: 'Hey, just a heads up â€” [reminder text]!'\n" +
+        "   - When a reminder fires, announce it verbally. Respond warmly: 'Hey, just a heads up Ã¢â‚¬â€ [reminder text]!'\n" +
         "   - SETTINGS: The user can also configure these in the SETTINGS panel in the UI. If they mention settings, let them know they can adjust them there too.\n" +
         "14. TERMINAL & PACKAGE EXECUTION (V2):\n" +
         "   - TERMINAL: Use 'requestTerminalAction' to get a confirmation token, then 'runTerminalCommand' to execute shell commands on Arch Linux. Always confirm with the user first.\n" +
         "   - PACKAGES: Use 'requestTerminalAction' with a package name, then 'installPackage' to install via pacman. Always confirm with the user first.\n" +
         "   - The user can also configure these in the SETTINGS panel in the UI. If they mention settings, let them know they can adjust them there too.\n" +
         "15. WEATHER, NEWS, WORKSPACE, CONVERSATION & GOOGLE SERVICES:\n" +
-        "   - WEATHER: Use 'getWeather' when the user asks about weather. Pass the location. Example: 'Mumbai mein kitna temperature hai?' -> getWeather(location='Mumbai') then read the result naturally: 'Mumbai mein {temp}Â°C hai, {description}.'\n" +
+        "   - WEATHER: Use 'getWeather' when the user asks about weather. Pass the location. Example: 'Mumbai mein kitna temperature hai?' -> getWeather(location='Mumbai') then read the result naturally: 'Mumbai mein {temp}Ã‚Â°C hai, {description}.'\n" +
         "   - NEWS: Use 'getNews' when the user asks for news headlines. Supports categories: top, tech, world, india, sports, business. Example: 'Aaj ki tech news batao' -> getNews(category='tech', count=5).\n" +
         "   - HYPRLAND WORKSPACES: Use 'switchWorkspace' to move to a workspace, 'listWorkspaces' to see available ones, 'moveToWorkspace' to move the active window. Example: 'Workspace 3 pe le chalo' -> switchWorkspace(workspace='3').\n" +
         "   - CONVERSATION EXPORT: Use 'exportConversation' when the user says 'save this chat', 'baat save kar', 'conversation export kar'. You MUST pass the full conversation text that you have in your context as the 'text' parameter. Confirm out loud: 'Ha, main ye conversation save kar deta hun.' Then call the tool with the conversation text. Use 'listExports' when they ask 'kaun si conversations saved hain'.\n" +
         "16. GOOGLE CALENDAR, GMAIL & TASKS (V3):\n" +
         "   - CALENDAR: Use 'getCalendarEvents' when user asks about schedule. Read events naturally: 'Aapke {count} events hain. {summary} {start} se {end} tak.' Use 'createCalendarEvent' to add events. Ask for details if not given: title, start, end, description, location, attendees.\n" +
-        "   - EMAIL: Use 'getEmails' to fetch inbox. Use 'sendEmail' to send emails. When SENDING emails, you MUST ask the user for: receiver (to), subject, and body â€” NEVER make these up. Read email summaries: '{from} ka email â€” {subject}'.\n" +
+        "   - EMAIL: Use 'getEmails' to fetch inbox. Use 'sendEmail' to send emails. When SENDING emails, you MUST ask the user for: receiver (to), subject, and body Ã¢â‚¬â€ NEVER make these up. Read email summaries: '{from} ka email Ã¢â‚¬â€ {subject}'.\n" +
         "   - TASKS: Use 'getTasks' when user asks about to-do list. Use 'createTask' to add tasks. Confirm title, ask for optional notes/due date.\n" +
         "   - FIRST-TIME SETUP: If Google tools fail, tell the user: 'Pehle Google Cloud Console mein project banao, Calendar/Gmail/Tasks APIs enable karo, credentials.json download karo, aur ~/.elysia/google_oauth/ mein rakho. Phir dobara try karo.'\n" +
         "17. CAMERA CONTROL:\n" +
@@ -1084,7 +1103,7 @@ async function startServer() {
                     required: ["color"]
                   }
                 },
-                // â”€â”€ OS Input (native keyboard/mouse) â”€â”€
+                // Ã¢â€â‚¬Ã¢â€â‚¬ OS Input (native keyboard/mouse) Ã¢â€â‚¬Ã¢â€â‚¬
                 {
                   name: "osType",
                   description: "Type text at the current cursor position using native OS keyboard events. Use for native apps (VS Code, terminal) or when Playwright DOM typing fails. Example: type code into a code editor.",
@@ -1550,7 +1569,7 @@ async function startServer() {
                   description: "List all previously saved conversation export files.",
                   parameters: { type: Type.OBJECT, properties: {} }
                 },
-                // â”€â”€ Google Calendar, Gmail, Tasks â”€â”€
+                // Ã¢â€â‚¬Ã¢â€â‚¬ Google Calendar, Gmail, Tasks Ã¢â€â‚¬Ã¢â€â‚¬
                 {
                   name: "getCalendarEvents",
                   description: "List upcoming Google Calendar events. Use when user asks 'what's on my calendar', 'mera schedule bata', 'upcoming events'.",
@@ -1723,7 +1742,7 @@ async function startServer() {
                     ? "No pending reminders."
                     : pending.map((r) => {
                         const mins = Math.max(0, Math.round((new Date(r.fireAt).getTime() - Date.now()) / 60000));
-                        return `"${r.text}" â€” fires in ${mins} min (id: ${r.id})`;
+                        return `"${r.text}" Ã¢â‚¬â€ fires in ${mins} min (id: ${r.id})`;
                       }).join("\n");
                   session.sendToolResponse({
                     functionResponses: [{
@@ -1756,14 +1775,21 @@ async function startServer() {
                     process.exit(0);
                   }, 2000);
                 } else if (DESKTOP_TOOLS.has(fnName)) {
-                  // â”€â”€ Desktop control tools: route to Python agent â”€â”€
+                  // Ã¢â€â‚¬Ã¢â€â‚¬ Desktop control tools: route to Python agent Ã¢â€â‚¬Ã¢â€â‚¬
                   (async () => {
                     // S10.5: Emit work_started event
                     const operationId = `work-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                     broadcastRuntimeEvent('work_started', 'WORKING', fnName, operationId);
 
                     console.log(`[Desktop Agent] Routing ${fnName} to Python backend...`);
-                    const agentResult = await callDesktopAgent(fnName, fc.args as Record<string, unknown>);
+                    // S11: Pass callback URL and operation_id so Python agent can stream step events
+                    const port = process.env.PORT || 3001;
+                    const enrichedArgs = {
+                      ...(fc.args as Record<string, unknown>),
+                      _callback_url: `http://127.0.0.1:${port}/internal/step-event`,
+                      _operation_id: operationId,
+                    };
+                    const agentResult = await callDesktopAgent(fnName, enrichedArgs);
 
                     // S10.5: Authoritative outcome determination from verification result
                     let outcomeState: RuntimeEventPayload['state'] = 'UNKNOWN';
@@ -1922,7 +1948,7 @@ async function startServer() {
     ensureDesktopAgent().catch((e) =>
       console.warn(`[Desktop Agent] Boot probe failed: ${e?.message || e}`)
     );
-    // Start the reminder timer â€” loads persisted reminders and checks every 30s.
+    // Start the reminder timer Ã¢â‚¬â€ loads persisted reminders and checks every 30s.
     await loadReminders();
     startReminderTimer();
     // When a reminder fires, broadcast it to all connected WebSocket clients.
@@ -1944,3 +1970,5 @@ async function startServer() {
 startServer().catch((error) => {
   console.error("Failed to start server startup sequence:", error);
 });
+
+
