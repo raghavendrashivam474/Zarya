@@ -241,6 +241,47 @@ async function ensureDesktopAgent(): Promise<void> {
   console.warn("[Desktop Agent] Did not come online within 20s. Desktop control will be unavailable.");
 }
 
+// ---------------------------------------------------------------------------
+// S10.5: Runtime Event Bridge — one-way observability from Zarya -> Frontend
+// ---------------------------------------------------------------------------
+export interface RuntimeEventPayload {
+  type: 'runtime_event';
+  version: 1;
+  event: 'work_started' | 'work_completed' | 'work_step_started' | 'work_step_completed';
+  operation_id: string;
+  timestamp: string;
+  state: 'WORKING' | 'VERIFYING' | 'VERIFIED_SUCCESS' | 'VERIFIED_FAILURE' | 'UNKNOWN' | 'PLANNING' | 'BLOCKED';
+  tool: string;
+  payload: Record<string, unknown>;
+}
+
+function broadcastRuntimeEvent(
+  event: RuntimeEventPayload['event'],
+  state: RuntimeEventPayload['state'],
+  tool: string,
+  operationId: string,
+  payload: Record<string, unknown> = {}
+): void {
+  const msg: RuntimeEventPayload = {
+    type: 'runtime_event',
+    version: 1,
+    event,
+    operation_id: operationId,
+    timestamp: new Date().toISOString(),
+    state,
+    tool,
+    payload,
+  };
+  const serialized = JSON.stringify(msg);
+  for (const ws of connectedClients) {
+    try {
+      ws.send(serialized);
+    } catch (_e) {
+      // client may have disconnected
+    }
+  }
+}
+
 async function callDesktopAgent(
   tool: string,
   args: Record<string, unknown>,
@@ -1717,8 +1758,32 @@ async function startServer() {
                 } else if (DESKTOP_TOOLS.has(fnName)) {
                   // â”€â”€ Desktop control tools: route to Python agent â”€â”€
                   (async () => {
+                    // S10.5: Emit work_started event
+                    const operationId = `work-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                    broadcastRuntimeEvent('work_started', 'WORKING', fnName, operationId);
+
                     console.log(`[Desktop Agent] Routing ${fnName} to Python backend...`);
                     const agentResult = await callDesktopAgent(fnName, fc.args as Record<string, unknown>);
+
+                    // S10.5: Authoritative outcome determination from verification result
+                    let outcomeState: RuntimeEventPayload['state'] = 'UNKNOWN';
+                    if (agentResult.ok && agentResult.result) {
+                      const r = agentResult.result as any;
+                      const vStatus = r?.verification?.status;
+                      if (vStatus === 'VERIFIED_SUCCESS' || vStatus === 'VERIFIED_FAILURE' || vStatus === 'UNKNOWN') {
+                        outcomeState = vStatus;
+                      } else if (r?.status === 'VERIFIED_SUCCESS' || r?.status === 'VERIFIED_FAILURE' || r?.status === 'UNKNOWN') {
+                        outcomeState = r.status;
+                      }
+                      // If no explicit verification status is present, outcome remains UNKNOWN (epistemic safety)
+                    } else if (!agentResult.ok) {
+                      outcomeState = 'VERIFIED_FAILURE';
+                    }
+
+                    broadcastRuntimeEvent('work_completed', outcomeState, fnName, operationId, {
+                      ok: agentResult.ok,
+                      has_verification: !!(agentResult.result as any)?.verification,
+                    });
 
                     // Broadcast tool execution to all connected clients for terminal display
                     const outputText = agentResult.ok
