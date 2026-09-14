@@ -5,6 +5,7 @@ Uses the OS backend for platform-independent app launching and closing.
 
 S1: Added post-launch verification to distinguish execution success
 from actual application state confirmation.
+S12: Added target artifact continuity parameter to launch target files.
 """
 
 from __future__ import annotations
@@ -13,11 +14,12 @@ import os
 import platform
 import subprocess
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ..registry import ToolError, register
 from ..backends import get_backend
 from ..state import StateObservation, StateDomain, cache as state_cache
+from ..artifacts import active_context, canonicalize_locator
 
 APP_COMMANDS: Dict[str, Dict[str, str]] = {
     "notepad": {"exe": "notepad.exe", "image": "notepad.exe", "label": "Notepad", "linux_cmd": "gedit", "linux_image": "gedit"},
@@ -27,13 +29,13 @@ APP_COMMANDS: Dict[str, Dict[str, str]] = {
     "calculator": {"shell": "calc", "image": "CalculatorApp.exe", "label": "Calculator", "linux_cmd": "gnome-calculator", "linux_image": "gnome-calculator"},
     "calc": {"shell": "calc", "image": "CalculatorApp.exe", "label": "Calculator", "linux_cmd": "gnome-calculator", "linux_image": "gnome-calculator"},
     "file explorer": {"shell": "explorer", "image": "explorer.exe", "label": "File Explorer", "linux_cmd": "nautilus", "linux_image": "nautilus"},
-    "explorer": {"shell": "explorer", "image": "explorer.exe", "label": "File Explorer", "linux_cmd": "nautilus", "linux_image": "nautilus"},   
+    "explorer": {"shell": "explorer", "image": "explorer.exe", "label": "File Explorer", "linux_cmd": "nautilus", "linux_image": "nautilus"},
     "task manager": {"shell": "taskmgr", "image": "Taskmgr.exe", "label": "Task Manager", "linux_cmd": "gnome-system-monitor", "linux_image": "gnome-system-monitor"},
     "taskmanager": {"shell": "taskmgr", "image": "Taskmgr.exe", "label": "Task Manager", "linux_cmd": "gnome-system-monitor", "linux_image": "gnome-system-monitor"},
     "settings": {"uwp": "ms-settings:", "image": "SystemSettings.exe", "label": "Settings", "linux_cmd": "gnome-control-center", "linux_image": "gnome-control-center"},
     "command prompt": {"exe": "cmd.exe", "image": "cmd.exe", "label": "Command Prompt", "linux_cmd": "gnome-terminal", "linux_image": "gnome-terminal-server"},
     "cmd": {"exe": "cmd.exe", "image": "cmd.exe", "label": "Command Prompt", "linux_cmd": "gnome-terminal", "linux_image": "gnome-terminal-server"},
-    "powershell": {"exe": "powershell.exe", "image": "powershell.exe", "label": "PowerShell", "linux_cmd": "pwsh", "linux_image": "pwsh"},      
+    "powershell": {"exe": "powershell.exe", "image": "powershell.exe", "label": "PowerShell", "linux_cmd": "pwsh", "linux_image": "pwsh"},
     "wordpad": {"shell": "write", "image": "wordpad.exe", "label": "WordPad", "linux_cmd": "abiword", "linux_image": "abiword"},
     "paint": {"shell": "mspaint", "image": "mspaint.exe", "label": "Paint", "linux_cmd": "gimp", "linux_image": "gimp"},
     "snipping tool": {"uwp": "ms-screenclip:", "image": "ScreenClippingHost.exe", "label": "Snipping Tool", "linux_cmd": "gnome-screenshot", "linux_image": "gnome-screenshot"},
@@ -68,10 +70,11 @@ def _is_hyprland() -> bool:
     return os.environ.get("XDG_CURRENT_DESKTOP", "").lower() == "hyprland"
 
 
-def _launch_hyprland(cmd: str, floating: bool, size: str = "60% 60%") -> None:
+def _launch_hyprland(cmd: str, floating: bool, size: str = "60% 60%", target: Optional[str] = None) -> None:
     prefix = f"[float size {size} center]" if floating else ""
+    target_part = f' "{target}"' if target else ""
     subprocess.Popen(
-        f"hyprctl dispatch exec -- {prefix} {cmd}",
+        f"hyprctl dispatch exec -- {prefix} {cmd}{target_part}",
         shell=True,
         close_fds=True,
         start_new_session=True,
@@ -162,11 +165,14 @@ def open_application(args: Dict[str, Any]) -> Dict[str, Any]:
     spec = _resolve_app(str(name))
     floating = bool(args.get("floating", False))
     size = args.get("size", "60% 60%")
+    target_raw = args.get("target") or args.get("target_path") or args.get("path") or args.get("file_path")
+    target_str = str(target_raw).strip() if target_raw else None
+
     linux_cmd = spec.get("linux_cmd")
     if floating and _is_hyprland() and linux_cmd:
-        _launch_hyprland(linux_cmd, floating=True, size=size)
+        _launch_hyprland(linux_cmd, floating=True, size=size, target=target_str)
     else:
-        get_backend().launcher.launch(spec)
+        get_backend().launcher.launch(spec, target=target_str)
 
     # S1: verify the application actually appeared
     verification = _verify_application_launched(spec)
@@ -191,24 +197,35 @@ def open_application(args: Dict[str, Any]) -> Dict[str, Any]:
         original_args=args,
     )
 
-    return {
-        "result": f"{spec['label']} opened.",
+    msg = f"{spec['label']} opened."
+    if target_str:
+        msg = f"{spec['label']} opened with target: {target_str}."
+
+    resp = {
+        "result": msg,
         "verification": verification,
         "state": state_obs.to_dict(),
         "failure": failure_reasoning,
         "recovery": recovery_result,
     }
+    if target_str:
+        resp["target"] = target_str
+
+    # S12: Update Active Context
+    active_context.update_from_tool_response("openApplication", args, resp)
+
+    return resp
 
 
 @register("closeApplication")
 def close_application(args: Dict[str, Any]) -> Dict[str, Any]:
     name = args.get("name") or args.get("application")
-    force = bool(args.get("force", False))
     if not name:
         raise ToolError("Parameter 'name' (application name) is required.")
     spec = _resolve_app(str(name))
-    get_backend().launcher.close(spec, force)
+    force = bool(args.get("force", False))
+    get_backend().launcher.close(spec, force=force)
     return {"result": f"Closed {spec['label']}."}
 
 
-__all__ = ["open_application", "close_application", "APP_COMMANDS"]
+__all__ = ["open_application", "close_application"]
