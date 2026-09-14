@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { LiveState, ZaryaAudioSession } from "./lib/audio";
 import { ShefaliPresence, type PresenceEmotion } from "./components/ShefaliPresence";
-import { deriveRuntimeState, type RuntimePresenceState } from "./components/presence/ShefaliPresenceController";
+import { deriveRuntimeState, formatStepProgressText, type RuntimePresenceState } from "./components/presence/ShefaliPresenceController";
 import { type ZaryaSettings, saveSettings, loadSettings } from "./lib/settingsStore";
 import type { Memory, MemoryCategory } from "./lib/memoryTypes";
 import { ShefaliWakeWordDetector } from "./lib/wakeWord";
@@ -52,6 +52,7 @@ export default function App() {
   const [settings, setSettings] = useState<ZaryaSettings>(loadSettings());
   const [state, setState] = useState<LiveState>("disconnected");
   const [runtimeState, setRuntimeState] = useState<RuntimePresenceState | undefined>(undefined);
+  const [stepProgress, setStepProgress] = useState<{ text: string; state: RuntimePresenceState } | null>(null);
 
   // Real-time Screen Sharing states
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
@@ -380,13 +381,15 @@ export default function App() {
   useEffect(() => {
     sessionRef.current = new ZaryaAudioSession({
       onRuntimeEvent: (event) => {
-        console.log("[Zarya Runtime Event]:", event.state, event.event, event.tool);
+        console.log('[Zarya S11 Event]:', event.event, event.state, event.tool);
         setRuntimeState(event.state);
-        // If operation completed, clear overlay back to resting presence after 3.5s
-        if (event.event === "work_completed") {
+        const text = formatStepProgressText(event.event, event.state, event.tool, event.payload);
+        setStepProgress({ text, state: event.state });
+        if (event.event === 'work_completed') {
           setTimeout(() => {
             setRuntimeState((curr) => (curr === event.state ? undefined : curr));
-          }, 3500);
+            setStepProgress(null);
+          }, 4000);
         }
       },
       onStateChange: (newState) => {
@@ -568,6 +571,47 @@ export default function App() {
 
       {/* CORE AVATAR AND VISUALS */}
       <main className="relative z-10 flex-1 w-full max-w-4xl mx-auto flex flex-col items-center justify-between py-6">
+        {/* S11: Authoritative Step Progress & UNKNOWN Presentation Pill */}
+        <AnimatePresence>
+          {stepProgress && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="z-40 mb-3 flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 shadow-lg backdrop-blur-md text-xs font-mono tracking-wide"
+              style={{
+                backgroundColor:
+                  stepProgress.state === "VERIFIED_SUCCESS"
+                    ? "rgba(16, 185, 129, 0.15)"
+                    : stepProgress.state === "VERIFIED_FAILURE"
+                    ? "rgba(239, 68, 68, 0.15)"
+                    : stepProgress.state === "UNKNOWN"
+                    ? "rgba(245, 158, 11, 0.15)"
+                    : "rgba(59, 130, 246, 0.15)",
+                borderColor:
+                  stepProgress.state === "VERIFIED_SUCCESS"
+                    ? "rgba(16, 185, 129, 0.4)"
+                    : stepProgress.state === "VERIFIED_FAILURE"
+                    ? "rgba(239, 68, 68, 0.4)"
+                    : stepProgress.state === "UNKNOWN"
+                    ? "rgba(245, 158, 11, 0.4)"
+                    : "rgba(59, 130, 246, 0.4)",
+                color:
+                  stepProgress.state === "VERIFIED_SUCCESS"
+                    ? "#34d399"
+                    : stepProgress.state === "VERIFIED_FAILURE"
+                    ? "#f87171"
+                    : stepProgress.state === "UNKNOWN"
+                    ? "#fbbf24"
+                    : "#60a5fa",
+              }}
+            >
+              <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "currentColor" }} />
+              <span>{stepProgress.text}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Holographic Projection Screen Widget (if website opened) */}
         <AnimatePresence>
@@ -690,13 +734,13 @@ export default function App() {
               </p>
               <div className="space-y-2 text-xs font-serif italic text-cyan-300">
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer font-sans normal-case text-slate-200">
-                  ⚡ &quot;Shefali, change atmosphere of your core to crimson&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Shifts theme color background</span>
+                  âš¡ &quot;Shefali, change atmosphere of your core to crimson&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Shifts theme color background</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer font-sans normal-case text-slate-200">
-                  ⚡ &quot;Open youtube.com on my screen please&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Invokes browser projector panel</span>
+                  âš¡ &quot;Open youtube.com on my screen please&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Invokes browser projector panel</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer font-sans normal-case text-slate-200">
-                  ⚡ &quot;Tell me a witty joke and change background to gold&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Combines tools & voice</span>
+                  âš¡ &quot;Tell me a witty joke and change background to gold&quot; <span className="text-[10px] font-mono text-cyan-500 block mt-0.5 font-bold">Combines tools & voice</span>
                 </div>
               </div>
             </motion.div>
@@ -1043,7 +1087,7 @@ export default function App() {
       {/* Sudo Confirmation Popup */}
       <SudoPopup />
 
-      {/* Text Chat Fallback — placeholder for future offline text input */}
+      {/* Text Chat Fallback â€” placeholder for future offline text input */}
       <TextChatFallback
         isActive={false}
         onClose={() => {}}
