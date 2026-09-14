@@ -132,13 +132,16 @@ async def execute(req: ExecuteRequest) -> ExecuteResponse:
     args = req.args or {}
     if tool_name not in TOOLS:
         return ExecuteResponse(ok=False, error=f"Unknown tool: {tool_name}", tool=tool_name)
+    handler = TOOLS[tool_name]
     callback_url = args.pop("_callback_url", None)
     operation_id = args.pop("_operation_id", None)
     step_cb = make_http_step_callback(callback_url, operation_id) if callback_url and operation_id else None
-    if step_cb and "step_callback" in inspect.signature(handler).parameters:
-        args["step_callback"] = step_cb
-
-    handler = TOOLS[tool_name]
+    try:
+        sig = inspect.signature(handler)
+        if step_cb and "step_callback" in sig.parameters:
+            args["step_callback"] = step_cb
+    except (ValueError, TypeError):
+        pass
     try:
         if inspect.iscoroutinefunction(handler):
             result = await handler(args)
@@ -150,8 +153,6 @@ async def execute(req: ExecuteRequest) -> ExecuteResponse:
     except Exception as e:
         log.exception("Tool %s failed", tool_name)
         return ExecuteResponse(ok=False, error=f"{type(e).__name__}: {e}", tool=tool_name)
-
-
 def main() -> None:
     import uvicorn
 

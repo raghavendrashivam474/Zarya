@@ -325,6 +325,25 @@ async function startServer() {
 
   app.use(express.json());
 
+// S11: Internal step event endpoint — receives real-time step events from Python agent
+app.post("/internal/step-event", (req, res) => {
+  try {
+    const { event, state, tool, operation_id, payload } = req.body;
+    if (event && state) {
+      broadcastRuntimeEvent(
+        event,
+        state,
+        tool || 'unknown_tool',
+        operation_id || 'internal-op',
+        payload || {}
+      );
+    }
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(200).json({ ok: false, error: err?.message });
+  }
+});
+
   // Memory REST API Endpoints
   app.get("/api/memories", async (req, res) => {
     try {
@@ -1952,22 +1971,4 @@ startServer().catch((error) => {
   console.error("Failed to start server startup sequence:", error);
 });
 
-// S11: Internal step event endpoint — receives real-time step events from Python agent
-app.post("/internal/step-event", (req, res) => {
-  try {
-    const { event, state, tool, operation_id, payload } = req.body;
-    if (event && state) {
-      broadcastRuntimeEvent(
-        event,
-        state,
-        tool || 'unknown_tool',
-        operation_id || 'internal-op',
-        payload || {}
-      );
-    }
-    res.json({ ok: true });
-  } catch (err: any) {
-    // Failure isolation: never fail the caller if broadcast has an issue
-    res.status(200).json({ ok: false, error: err?.message });
-  }
-});
+
