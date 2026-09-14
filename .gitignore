@@ -19,3 +19,7 @@ s9_baseline_*.txt
 Desktop/
 
 data/
+
+# Local test artifact pollution
+Documents/
+
