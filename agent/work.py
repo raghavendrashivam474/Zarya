@@ -52,12 +52,14 @@ def _interpolate_step_args(
     tool_name: str,
     args: Dict[str, Any],
     completed_steps: List[Dict[str, Any]],
+    context: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Resolve referential placeholders and pronouns in step args to canonical targets.
 
     S12 Invariant: If an argument references 'it', '$ACTIVE_ARTIFACT', or 'that file',
     resolve it deterministically to the active artifact locator.
     """
+    ctx = context or active_context
     resolved_args = dict(args)
 
     # Check common target fields
@@ -70,19 +72,19 @@ def _interpolate_step_args(
 
             # 1. Exact pronoun / placeholder reference
             if val_lower in PRONOUN_REFERENCES or val_strip.startswith("$") or "{{" in val_strip:
-                resolution = resolve_target(val_strip)
+                resolution = ctx.resolve_target(val_strip)
                 if resolution.is_resolved and resolution.canonical_locator:
                     resolved_args[k] = resolution.canonical_locator
                     log.info("S12 work: resolved arg '%s': '%s' -> '%s'", k, val, resolution.canonical_locator)
 
     # If openApplication was given without target, but active artifact exists and step description implies it
     if tool_name == "openApplication" and not resolved_args.get("target"):
-        if active_context.active_artifact and active_context.active_artifact.artifact_type == "file":
+        if ctx.active_artifact and ctx.active_artifact.artifact_type == "file":
             # Check if there was a preceding file step in this plan
             if completed_steps:
                 last_step = completed_steps[-1]
                 if last_step.get("tool") in ("createFile", "readFile", "writeCodeFile", "createPythonFile"):
-                    resolved_args["target"] = active_context.active_artifact.canonical_locator
+                    resolved_args["target"] = ctx.active_artifact.canonical_locator
                     log.info("S12 work: auto-attached active artifact target to openApplication: %s", resolved_args["target"])
 
     return resolved_args
@@ -199,6 +201,7 @@ def execute_work(
     authorized: bool = False,
     step_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     adaptive: bool = False,
+    context: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Execute a validated WorkPlan sequentially with S12 context continuity."""
     is_valid, validation_reason = validate_plan(plan)
@@ -248,7 +251,8 @@ def execute_work(
         unverified_ok = bool(step.get("unverified_ok", False))
 
         # S12: Interpolate referential placeholders with active artifact context
-        args = _interpolate_step_args(tool_name, raw_args, completed_steps)
+        ctx = context or active_context
+        args = _interpolate_step_args(tool_name, raw_args, completed_steps, context=ctx)
 
         log.info("Executing step '%s' via tool '%s' with args %s", step_id, tool_name, args)
 
@@ -290,7 +294,7 @@ def execute_work(
         step_status, detail_msg = _evaluate_step_outcome(response, unverified_ok)
 
         # S12: Update active context with verified tool outcome
-        active_context.update_from_tool_response(tool_name, args, response)
+        ctx.update_from_tool_response(tool_name, args, response)
 
         recorded_step = {
             "step_id": step_id,
