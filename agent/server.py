@@ -95,12 +95,49 @@ async def list_tools():
     return sorted(TOOLS)
 
 
+
+def make_http_step_callback(callback_url: str, operation_id: str):
+    """Create a failure-isolated HTTP callback that posts step events to Node bridge."""
+    def _cb(event: dict) -> None:
+        try:
+            import json
+            import urllib.request
+            payload = {
+                "event": event.get("event"),
+                "state": event.get("state"),
+                "tool": event.get("tool"),
+                "operation_id": operation_id,
+                "payload": {
+                    "step_id": event.get("step_id"),
+                    "step_index": event.get("step_index"),
+                    "total_steps": event.get("total_steps"),
+                    **event.get("payload", {}),
+                },
+            }
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                callback_url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=1.0) as resp:
+                pass
+        except Exception as exc:
+            log.warning("Failed to dispatch step event to %s: %s", callback_url, exc)
+    return _cb
 @app.post("/execute", response_model=ExecuteResponse)
 async def execute(req: ExecuteRequest) -> ExecuteResponse:
     tool_name = req.tool
     args = req.args or {}
     if tool_name not in TOOLS:
         return ExecuteResponse(ok=False, error=f"Unknown tool: {tool_name}", tool=tool_name)
+    callback_url = args.pop("_callback_url", None)
+    operation_id = args.pop("_operation_id", None)
+    step_cb = make_http_step_callback(callback_url, operation_id) if callback_url and operation_id else None
+    if step_cb and "step_callback" in inspect.signature(handler).parameters:
+        args["step_callback"] = step_cb
+
     handler = TOOLS[tool_name]
     try:
         if inspect.iscoroutinefunction(handler):
@@ -200,3 +237,4 @@ async def interact_persona(request: Request):
             "suggested_actions": ["Check system logs", "Retry"],
             "raw_intent_dict": None,
         }
+
