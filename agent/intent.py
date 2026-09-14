@@ -30,6 +30,7 @@ class S8Step:
     args: Dict[str, Any] = field(default_factory=dict)
     description: str = ""
     id: str = "step-1"
+    unverified_ok: bool = False
 
 
 @dataclass
@@ -49,13 +50,7 @@ class S8WorkPlan:
                     "tool": step.tool,
                     "args": step.args,
                     "description": step.description,
-                    "unverified_ok": step.tool in (
-                        "readFile",
-                        "listFiles",
-                        "searchFiles",
-                        "systemInfo",
-                        "takeScreenshot",
-                    ),
+                    "unverified_ok": step.unverified_ok,
                 }
                 for step in self.steps
             ],
