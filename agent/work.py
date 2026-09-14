@@ -1,11 +1,17 @@
 ﻿"""
-S6 / S10: Verified Multi-Step Work â€” bounded, evidence-grounded work execution.
+S6: Verified Multi-Step Work System.
 
-Consumes structured work plans, validates them, checks authorization boundaries,
-and executes steps sequentially. Integrates with:
-  - S4 failure reasoning
-  - S5 closed-loop recovery at the step level
-  - S10 adaptive work engine for situational reassessment (behind adaptive=True flag)
+Core orchestration engine for executing bounded, sequential multi-step plans
+with per-step verification, S3 state observation, S4 failure reasoning,
+S5 autonomous recovery, S10 runtime adaptation, and S12 artifact identity continuity.
+
+Invariants:
+  1. Multi-step work must not run unboundedly (hard MAX_STEPS = 10 cap).
+  2. Plan execution stops on unrecovered failure or UNKNOWN without fallback.
+  3. Every step outcome must carry S2 verification status and evidence.
+  4. Final WorkResult is truthful and non-hallucinated.
+  5. Recovery authority remains with S5; adaptation authority with S10.
+  6. S12: Concrete artifact identity is preserved and propagated across steps.
 """
 
 from __future__ import annotations
@@ -16,23 +22,18 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from .registry import TOOLS, load_all
 from .adaptive_work import (
     DECISION_ADAPT,
-    DECISION_BLOCK,
-    DECISION_CONTINUE,
-    DECISION_FAIL,
-    DECISION_UNKNOWN,
-    MAX_ADAPTATION_ROUNDS,
+            MAX_ADAPTATION_ROUNDS,
     reassess,
 )
+from .artifacts import active_context, resolve_target, PRONOUN_REFERENCES, ResolutionStatus
 
 # Ensure tools are loaded when work executor is imported
 load_all()
 
 log = logging.getLogger("zarya.work")
 
-# ---------------------------------------------------------------------------
-# Constants & Bounds
-# ---------------------------------------------------------------------------
-MAX_STEPS = 16
+# Hard execution bounds
+MAX_STEPS = 10
 
 # Work-level outcomes
 OUTCOME_VERIFIED_SUCCESS = "VERIFIED_SUCCESS"
@@ -47,40 +48,76 @@ STEP_FAILURE = "VERIFIED_FAILURE"
 STEP_UNKNOWN = "UNKNOWN"
 
 
+def _interpolate_step_args(
+    tool_name: str,
+    args: Dict[str, Any],
+    completed_steps: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Resolve referential placeholders and pronouns in step args to canonical targets.
+
+    S12 Invariant: If an argument references 'it', '$ACTIVE_ARTIFACT', or 'that file',
+    resolve it deterministically to the active artifact locator.
+    """
+    resolved_args = dict(args)
+
+    # Check common target fields
+    target_keys = ["path", "target", "target_path", "filepath", "name", "query", "command"]
+    for k in list(resolved_args.keys()):
+        val = resolved_args[k]
+        if isinstance(val, str):
+            val_strip = val.strip()
+            val_lower = val_strip.lower()
+
+            # 1. Exact pronoun / placeholder reference
+            if val_lower in PRONOUN_REFERENCES or val_strip.startswith("$") or "{{" in val_strip:
+                resolution = resolve_target(val_strip)
+                if resolution.is_resolved and resolution.canonical_locator:
+                    resolved_args[k] = resolution.canonical_locator
+                    log.info("S12 work: resolved arg '%s': '%s' -> '%s'", k, val, resolution.canonical_locator)
+
+    # If openApplication was given without target, but active artifact exists and step description implies it
+    if tool_name == "openApplication" and not resolved_args.get("target"):
+        if active_context.active_artifact and active_context.active_artifact.artifact_type == "file":
+            # Check if there was a preceding file step in this plan
+            if completed_steps:
+                last_step = completed_steps[-1]
+                if last_step.get("tool") in ("createFile", "readFile", "writeCodeFile", "createPythonFile"):
+                    resolved_args["target"] = active_context.active_artifact.canonical_locator
+                    log.info("S12 work: auto-attached active artifact target to openApplication: %s", resolved_args["target"])
+
+    return resolved_args
+
+
 # ---------------------------------------------------------------------------
 # Validation & Orchestration Helpers
 # ---------------------------------------------------------------------------
 
 def validate_plan(plan: Dict[str, Any]) -> Tuple[bool, str]:
-    """Validate plan structure, bounds, and arguments before execution.
-
-    Returns:
-        (is_valid, reason) tuple.
-    """
+    """Validate plan structure, bounds, and arguments before execution."""
     if not isinstance(plan, dict):
         return False, "Plan must be a structured dictionary."
 
     steps = plan.get("steps")
-    if not steps:
-        return False, "Plan must contain a non-empty list of steps."
-
     if not isinstance(steps, list):
-        return False, "Steps must be a list."
+        return False, "Plan must contain a 'steps' list."
+
+    if len(steps) == 0:
+        return False, "Plan steps must be a non-empty list."
 
     if len(steps) > MAX_STEPS:
-        return False, f"Plan exceeds maximum allowed steps of {MAX_STEPS} (got {len(steps)})."
+        return False, f"Plan exceeds maximum allowed steps ({len(steps)} > {MAX_STEPS})."
 
     seen_ids = set()
-    for index, step in enumerate(steps):
+    for idx, step in enumerate(steps):
         if not isinstance(step, dict):
-            return False, f"Step at index {index} must be a dictionary."
+            return False, f"Step #{idx} must be a dict."
 
         step_id = step.get("id")
         if not step_id or not isinstance(step_id, str):
-            return False, f"Step at index {index} is missing a valid string 'id'."
+            return False, f"Step #{idx} must specify a non-empty string 'id'."
 
         if step_id in seen_ids:
-            return False, f"Duplicate step ID found: '{step_id}'."
+            return False, f"Duplicate step ID '{step_id}' found in plan."
         seen_ids.add(step_id)
 
         tool = step.get("tool")
@@ -92,21 +129,16 @@ def validate_plan(plan: Dict[str, Any]) -> Tuple[bool, str]:
 
         args = step.get("args")
         if args is not None and not isinstance(args, dict):
-            return False, f"Step '{step_id}' 'args' must be a dictionary if provided."
+            return False, f"Step '{step_id}' 'args' must be a dictionary."
 
     return True, "Plan is valid."
 
 
 def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tuple[str, str]:
-    """Analyze tool response and S5 payload to determine step outcome.
-
-    Returns:
-        (step_status, detail_message) tuple.
-    """
+    """Analyze tool response and S5 payload to determine step outcome."""
     verification = response.get("verification")
     recovery = response.get("recovery")
 
-    # If verification payload is absent
     if not verification:
         if unverified_ok:
             return STEP_SUCCESS, "Step executed successfully (unverified_ok=True)."
@@ -115,27 +147,19 @@ def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tup
     v_status = verification.get("status", "UNKNOWN")
 
     if v_status == "VERIFIED_SUCCESS":
-        return STEP_SUCCESS, verification.get("detail", "Step verified successfully.")
+        return STEP_SUCCESS, verification.get("detail", "Verified successfully.")
+
+    if recovery and isinstance(recovery, dict):
+        rec_status = recovery.get("status")
+        if rec_status == "RECOVERED":
+            return STEP_RECOVERED, f"Step recovered via S5: {recovery.get('strategy_name', 'recovery')}"
+        elif rec_status == "EXHAUSTED":
+            return STEP_FAILURE, f"Recovery exhausted: {recovery.get('reason', 'all strategies failed')}"
 
     if v_status == "VERIFIED_FAILURE":
-        # S5 closed-loop recovery check
-        if recovery and recovery.get("status") == "RECOVERED":
-            return STEP_RECOVERED, f"Step failed initially but S5 recovery succeeded: {recovery.get('reason')}"
+        return STEP_FAILURE, verification.get("detail", "Verification failed.")
 
-        detail_msg = verification.get("detail", "Step verification failed.")
-        if recovery and recovery.get("status") in ("FAILED", "UNKNOWN"):
-            detail_msg += f" S5 recovery attempt status: {recovery.get('status')} ({recovery.get('reason')})"
-        return STEP_FAILURE, detail_msg
-
-    # UNKNOWN step verification
-    if unverified_ok:
-        return STEP_SUCCESS, "Step verification status was UNKNOWN but permitted by unverified_ok=True."
-    return STEP_UNKNOWN, verification.get("detail", "Step verification returned UNKNOWN.")
-
-
-# ---------------------------------------------------------------------------
-# Core Executor
-# ---------------------------------------------------------------------------
+    return STEP_UNKNOWN, verification.get("detail", "Verification returned UNKNOWN.")
 
 
 def _emit_step_event(
@@ -148,14 +172,11 @@ def _emit_step_event(
     state: str,
     payload: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Safely invoke step callback with authoritative execution data.
-
-    Guarantees failure isolation: callback exceptions never interrupt work execution.
-    """
+    """Safely emit an S11 step event via the provided callback."""
     if callback is None:
         return
     try:
-        event = {
+        evt = {
             "event": event_type,
             "step_id": step_id,
             "tool": tool_name,
@@ -164,26 +185,27 @@ def _emit_step_event(
             "state": state,
             "payload": payload or {},
         }
-        callback(event)
+        callback(evt)
     except Exception as exc:
-        log.warning("Step callback failed for event '%s' on step '%s': %s", event_type, step_id, exc)
+        log.warning("S11 step event emission failed for '%s': %s", event_type, exc)
+
+
+# ---------------------------------------------------------------------------
+# Main Multi-Step Work Executor
+# ---------------------------------------------------------------------------
+
 def execute_work(
     plan: Dict[str, Any],
     authorized: bool = False,
-    adaptive: bool = False,
     step_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    adaptive: bool = False,
 ) -> Dict[str, Any]:
-    """Execute a validated work plan sequentially.
+    """Execute a validated WorkPlan sequentially with S12 context continuity."""
+    is_valid, validation_reason = validate_plan(plan)
+    goal = plan.get("goal", "") if isinstance(plan, dict) else ""
+    initial_steps = plan.get("steps", []) if isinstance(plan, dict) and isinstance(plan.get("steps"), list) else []
 
-    Ensures safety limits, failure isolation, S5 recovery checks,
-    and optional S10 adaptive reassessment when state diverges.
-    """
-    goal = plan.get("goal", "Execute multi-step task")
-    initial_steps = plan.get("steps", [])
-
-    # Step 1: Pre-execution Plan Validation
-    valid, validation_reason = validate_plan(plan)
-    if not valid:
+    if not is_valid:
         return {
             "goal": goal,
             "overall_status": OUTCOME_INCOMPLETE,
@@ -193,7 +215,6 @@ def execute_work(
             "skipped_steps": [s.get("id") for s in initial_steps if isinstance(s, dict) and s.get("id")],
         }
 
-    # Step 2: Work Authorization Boundary Check
     if not authorized:
         return {
             "goal": goal,
@@ -214,7 +235,6 @@ def execute_work(
     adaptation_round = 0
     adaptations_log: List[Dict[str, Any]] = []
 
-    # Step 3: Sequential execution loop
     while execution_queue:
         if len(completed_steps) >= MAX_STEPS:
             overall_status = OUTCOME_INCOMPLETE
@@ -224,8 +244,11 @@ def execute_work(
         step = execution_queue.pop(0)
         step_id = step["id"]
         tool_name = step["tool"]
-        args = step.get("args") or {}
+        raw_args = step.get("args") or {}
         unverified_ok = bool(step.get("unverified_ok", False))
+
+        # S12: Interpolate referential placeholders with active artifact context
+        args = _interpolate_step_args(tool_name, raw_args, completed_steps)
 
         log.info("Executing step '%s' via tool '%s' with args %s", step_id, tool_name, args)
 
@@ -266,6 +289,9 @@ def execute_work(
         # Step 4: Evaluate outcome
         step_status, detail_msg = _evaluate_step_outcome(response, unverified_ok)
 
+        # S12: Update active context with verified tool outcome
+        active_context.update_from_tool_response(tool_name, args, response)
+
         recorded_step = {
             "step_id": step_id,
             "tool": tool_name,
@@ -275,14 +301,16 @@ def execute_work(
             "failure": response.get("failure"),
             "recovery": response.get("recovery"),
         }
+        if "path" in response:
+            recorded_step["path"] = response["path"]
+        if "target" in response:
+            recorded_step["target"] = response["target"]
 
         completed_steps.append(recorded_step)
 
-        # Map step status to authoritative runtime event state
         event_state = "VERIFIED_SUCCESS" if step_status in (STEP_SUCCESS, STEP_RECOVERED) else (
             "UNKNOWN" if step_status == STEP_UNKNOWN else "VERIFIED_FAILURE"
         )
-
         _emit_step_event(
             callback=step_callback,
             event_type="work_step_completed",
@@ -296,13 +324,12 @@ def execute_work(
                 "detail": detail_msg,
                 "verification": response.get("verification"),
                 "recovery": response.get("recovery"),
+                "state": response.get("state"),
             },
         )
 
-        # Step 5: Evaluate step outcome and check for S10 adaptation if enabled
         if step_status not in (STEP_SUCCESS, STEP_RECOVERED):
             if adaptive:
-                # Consult S10 Adaptive Work Engine
                 decision_dict = reassess(
                     goal=goal,
                     remaining_steps=execution_queue,
@@ -322,11 +349,9 @@ def execute_work(
                         "injected_steps": [s["id"] for s in candidate_steps],
                     })
                     log.info("S10 Adaptation #%d triggered: %s. Injecting %d steps.", adaptation_round, reason, len(candidate_steps))
-                    # Prepend adapted candidate steps to execution queue
                     execution_queue = candidate_steps + execution_queue
                     continue
 
-            # Halt if adaptation not enabled or adaptation did not yield alternative
             if step_status == STEP_UNKNOWN:
                 overall_status = OUTCOME_UNKNOWN
                 summary_message = f"Halted at step '{step_id}': outcome is UNKNOWN. {detail_msg}"
@@ -337,7 +362,6 @@ def execute_work(
             failed_step_info = recorded_step
             break
 
-    # Calculate skipped steps from remaining queue
     skipped_steps = [s["id"] for s in execution_queue]
 
     result: Dict[str, Any] = {
@@ -368,3 +392,5 @@ __all__ = [
     "STEP_FAILURE",
     "STEP_UNKNOWN",
 ]
+
+
