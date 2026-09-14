@@ -29,6 +29,7 @@ from agent.artifacts import (
 from agent.intent import IntentInterpreter, process_natural_intent
 from agent.registry import TOOLS
 from agent.work import (
+    OUTCOME_UNKNOWN,
     OUTCOME_VERIFIED_FAILURE,
     OUTCOME_VERIFIED_SUCCESS,
     execute_work,
@@ -288,7 +289,7 @@ class TestS12GoldenWorkflow(unittest.TestCase):
 
         # 4. Step 4: READ & VERIFY exact content on disk
         read_res = process_natural_intent("read it", authorized=True)
-        self.assertEqual(read_res["status"], OUTCOME_VERIFIED_SUCCESS)
+        self.assertEqual(read_res["status"], OUTCOME_UNKNOWN)  # S12.1: readFile is unverified in S2, correctly preserves UNKNOWN
         actual_disk_content = target_file.read_text(encoding="utf-8")
         self.assertEqual(actual_disk_content, "Hello Zarya\nThis is a test")
 
