@@ -114,7 +114,40 @@ class IntentInterpreter:
                 clarification_message="I need more information before I can safely perform that. What specific task or application did you have in mind?",
             )
 
+                # -------------------------------------------------------------------
+        # S13 Pattern: Active Desktop Context Queries
         # -------------------------------------------------------------------
+        if re.search(r"^(?:what(?:'s|\s+is)?\s+(?:the\s+)?(?:active|current|focused)\s+window|get\s+active\s+window|check\s+active\s+window)", text_lower):
+            return S8WorkPlan(
+                intent=user_input,
+                goal="Observe active desktop window",
+                steps=[
+                    S8Step(
+                        id="step-1",
+                        tool="getActiveWindow",
+                        args={},
+                        description="Observe active foreground window and application",
+                    )
+                ],
+                status="UNDERSTOOD",
+            )
+
+        if re.search(r"^(?:what(?:'s|\s+is)?\s+(?:the\s+)?(?:active|current)\s+context|what\s+app(?:\s+am\s+i|\s+is)\s+using|what\s+am\s+i\s+working\s+on|get\s+active\s+context|check\s+active\s+context)", text_lower):
+            return S8WorkPlan(
+                intent=user_input,
+                goal="Observe active computer context",
+                steps=[
+                    S8Step(
+                        id="step-1",
+                        tool="getActiveContext",
+                        args={},
+                        description="Observe full active computer context snapshot",
+                    )
+                ],
+                status="UNDERSTOOD",
+            )
+
+# -------------------------------------------------------------------
         # S12 Pattern 0: Compound CREATE -> OPEN workflow
         # e.g., "Create notes.txt with 'Hello' and open it in Notepad"
         # -------------------------------------------------------------------
@@ -402,6 +435,8 @@ class PlanValidator:
         "runTerminalCommand",
         "takeScreenshot",
         "systemInfo",
+        "getActiveWindow",
+        "getActiveContext",
     ]
 
     @staticmethod

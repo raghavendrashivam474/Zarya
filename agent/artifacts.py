@@ -193,6 +193,18 @@ class TargetResolution:
 
 # Common natural language referring expressions for active artifact
 PRONOUN_REFERENCES = {
+    "the active document",
+    "active document",
+    "the current document",
+    "current document",
+    "the active file",
+    "active file",
+    "the open file",
+    "open file",
+    "the active window",
+    "active window",
+    "the current window",
+    "current window",
     "it",
     "that",
     "this",
@@ -230,6 +242,11 @@ class ActiveComputerContext:
         # The most recent artifact for which verification produced VERIFIED_SUCCESS.
         self._last_verified_artifact: Optional[ArtifactIdentity] = None
         self._active_application: Optional[str] = None
+        # S13 — Active desktop observation
+        self._active_window_title: Optional[str] = None
+        self._active_window_process: Optional[str] = None
+        self._desktop_observed_at: Optional[str] = None
+        self._desktop_freshness: str = "UNKNOWN" 
 
     def clear(self) -> None:
         """Reset all active context (e.g. at session start or test teardown)."""
@@ -239,6 +256,10 @@ class ActiveComputerContext:
             self._last_created_artifact = None
             self._last_verified_artifact = None
             self._active_application = None
+            self._active_window_title = None
+            self._active_window_process = None
+            self._desktop_observed_at = None
+            self._desktop_freshness = "UNKNOWN" 
 
     @property
     def active_artifact(self) -> Optional[ArtifactIdentity]:
@@ -259,6 +280,24 @@ class ActiveComputerContext:
     def active_application(self) -> Optional[str]:
         with self._lock:
             return self._active_application
+
+    @property
+    def active_window_title(self) -> Optional[str]:
+        """S13: Title of the currently observed active window."""
+        with self._lock:
+            return self._active_window_title
+
+    @property
+    def active_window_process(self) -> Optional[str]:
+        """S13: Process name of the currently observed active window."""
+        with self._lock:
+            return self._active_window_process
+
+    @property
+    def desktop_freshness(self) -> str:
+        """S13: Freshness of the last desktop observation."""
+        with self._lock:
+            return self._desktop_freshness
 
     def record_artifact(
         self,
@@ -450,6 +489,62 @@ class ActiveComputerContext:
 
         return None
 
+    def observe_desktop(self) -> dict:
+        """S13: Observe current active window and application on-demand."""
+        try:
+            from agent.tools.desktop_observer import observe_active_window
+            obs = observe_active_window()
+            with self._lock:
+                if obs.is_available and obs.active_window:
+                    self._active_window_title = obs.active_window.title
+                    self._active_window_process = obs.active_window.process_name
+                    self._active_application = obs.active_window.process_name
+                    self._desktop_observed_at = obs.observed_at
+                    self._desktop_freshness = "CURRENT"
+                else:
+                    self._desktop_freshness = "UNKNOWN"
+                    self._desktop_observed_at = obs.observed_at
+                return obs.to_dict()
+        except Exception as e:
+            with self._lock:
+                self._desktop_freshness = "UNKNOWN"
+            return {"error": str(e), "freshness": "UNKNOWN"}
+
+    def get_desktop_snapshot(self) -> dict:
+        """S13: Return current desktop context snapshot."""
+        with self._lock:
+            return {
+                "active_application": self._active_application,
+                "active_window_title": self._active_window_title,
+                "active_window_process": self._active_window_process,
+                "active_artifact": (
+                    self._active_artifact.canonical_locator
+                    if self._active_artifact else None
+                ),
+                "desktop_observed_at": self._desktop_observed_at,
+                "desktop_freshness": self._desktop_freshness,
+            }
+
+    def match_artifact_to_window(self, window_title: Optional[str] = None) -> Optional[ArtifactIdentity]:
+        """S13: Find a known artifact whose name or locator matches active window title."""
+        with self._lock:
+            title = window_title or self._active_window_title
+            if not title:
+                return None
+            title_lower = title.lower()
+            matches = []
+            for art in self._artifacts.values():
+                if art.artifact_type == ArtifactType.FILE:
+                    fname = Path(art.canonical_locator).name.lower()
+                    if fname and fname in title_lower:
+                        matches.append(art)
+                elif art.artifact_type == ArtifactType.APPLICATION:
+                    if art.display_name.lower() in title_lower:
+                        matches.append(art)
+            if len(matches) == 1:
+                return matches[0]
+            return None
+
     def resolve_target(self, reference: str) -> TargetResolution:
         """Resolve a natural reference, placeholder, filename, or locator to an ArtifactIdentity."""
         if not reference:
@@ -474,6 +569,16 @@ class ActiveComputerContext:
 
             # 2. Pronoun / Deictic Reference ("it", "that file", "same file", etc.)
             if ref_lower in PRONOUN_REFERENCES:
+                # S13: Match fresh active window to a known artifact first
+                if self._desktop_freshness == "CURRENT" and self._active_window_title:
+                    matched_win = self.match_artifact_to_window(self._active_window_title)
+                    if matched_win is not None:
+                        return TargetResolution(
+                            status=ResolutionStatus.RESOLVED,
+                            artifact=matched_win,
+                            canonical_locator=matched_win.canonical_locator,
+                            reason=f"Resolved '{ref_clean}' to active window artifact: {matched_win.canonical_locator} (Window: '{self._active_window_title}')",
+                        )
                 if self._active_artifact is not None:
                     return TargetResolution(
                         status=ResolutionStatus.RESOLVED,

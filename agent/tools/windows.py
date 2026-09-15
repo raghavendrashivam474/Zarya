@@ -75,3 +75,111 @@ __all__ = [
     "close_window",
     "switch_application",
 ]
+
+
+
+# ── S13: Active Desktop Context Observation Tools ───────────────────────────
+
+@register("getActiveWindow")
+def get_active_window(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Observe the currently active (foreground) window on the desktop.
+
+    Returns title, process name, PID, evidence, and S3 freshness.
+    """
+    from ..artifacts import active_context
+    from .desktop_observer import observe_active_window
+
+    obs = observe_active_window()
+    if obs.is_available and obs.active_window:
+        active_context._active_window_title = obs.active_window.title
+        active_context._active_window_process = obs.active_window.process_name
+        active_context._active_application = obs.active_window.process_name
+        active_context._desktop_observed_at = obs.observed_at
+        active_context._desktop_freshness = "CURRENT"
+
+        matched = active_context.match_artifact_to_window(obs.active_window.title)
+        matched_locator = matched.canonical_locator if matched else None
+
+        return {
+            "title": obs.active_window.title,
+            "process_name": obs.active_window.process_name,
+            "process_id": obs.active_window.process_id,
+            "matched_artifact": matched_locator,
+            "freshness": "CURRENT",
+            "evidence": obs.active_window.evidence,
+            "observed_at": obs.observed_at,
+            "verification": {
+                "status": "VERIFIED_SUCCESS",
+                "method": "desktop_observation",
+                "detail": f"Observed active window '{obs.active_window.title}' ({obs.active_window.process_name})",
+            },
+        }
+
+    return {
+        "title": None,
+        "process_name": None,
+        "process_id": None,
+        "matched_artifact": None,
+        "freshness": "UNKNOWN",
+        "error": obs.error or "Window observation unavailable",
+        "observed_at": obs.observed_at,
+        "verification": {
+            "status": "UNKNOWN",
+            "method": "desktop_observation",
+            "detail": obs.error or "Could not observe active window",
+        },
+    }
+
+
+@register("getActiveContext")
+def get_active_context(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Get the full active computer context snapshot including active window, application, matched artifact, working directory, and freshness."""
+    import os
+    from ..artifacts import active_context
+    from .desktop_observer import observe_active_window
+
+    obs = observe_active_window()
+    cwd = os.getcwd()
+
+    if obs.is_available and obs.active_window:
+        active_context._active_window_title = obs.active_window.title
+        active_context._active_window_process = obs.active_window.process_name
+        active_context._active_application = obs.active_window.process_name
+        active_context._desktop_observed_at = obs.observed_at
+        active_context._desktop_freshness = "CURRENT"
+
+        matched = active_context.match_artifact_to_window(obs.active_window.title)
+        matched_locator = matched.canonical_locator if matched else None
+
+        return {
+            "active_application": obs.active_window.process_name,
+            "active_window": obs.active_window.title,
+            "active_artifact": matched_locator,
+            "working_directory": cwd,
+            "freshness": "CURRENT",
+            "observed_at": obs.observed_at,
+            "evidence": obs.active_window.evidence,
+            "verification": {
+                "status": "VERIFIED_SUCCESS",
+                "method": "active_context_snapshot",
+                "detail": f"Active app: {obs.active_window.process_name}, Window: {obs.active_window.title}",
+            },
+        }
+
+    return {
+        "active_application": active_context.active_application,
+        "active_window": None,
+        "active_artifact": (
+            active_context.active_artifact.canonical_locator
+            if active_context.active_artifact else None
+        ),
+        "working_directory": cwd,
+        "freshness": "UNKNOWN",
+        "error": obs.error or "Context observation unavailable",
+        "observed_at": obs.observed_at,
+        "verification": {
+            "status": "UNKNOWN",
+            "method": "active_context_snapshot",
+            "detail": obs.error or "Could not observe active desktop context",
+        },
+    }
