@@ -115,6 +115,24 @@ class IntentInterpreter:
             )
 
                 # -------------------------------------------------------------------
+        # -------------------------------------------------------------------
+        # S14 Pattern: Active Browser Context Queries
+        # -------------------------------------------------------------------
+        if re.search(r"(?:what\s+(?:webpage|website|page|browser\s+tab|tab|url)\s+(?:am\s+i\s+(?:currently\s+)?(?:on|viewing|looking\s+at)|is\s+(?:currently\s+)?(?:open|active|focused))|(?:the\s+)?current\s+(?:webpage|website|page|browser\s+context|tab|url)|what\s+page\s+am\s+i\s+(?:currently\s+)?on)", text_lower):
+            return S8WorkPlan(
+                intent=user_input,
+                goal="Observe active browser context",
+                steps=[
+                    S8Step(
+                        id="step-1",
+                        tool="getActiveContext",
+                        args={},
+                        description="Observe active computer and browser context snapshot",
+                    )
+                ],
+                status="UNDERSTOOD",
+            )
+
         # S13 Pattern: Active Desktop Context Queries
         # -------------------------------------------------------------------
         if re.search(r"^(?:what(?:'s|\s+is)?\s+(?:the\s+)?(?:active|current|focused)\s+window|get\s+active\s+window|check\s+active\s+window)", text_lower):
