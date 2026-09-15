@@ -245,6 +245,14 @@ class ActiveComputerContext:
         # S13 — Active desktop observation
         self._active_window_title: Optional[str] = None
         self._active_window_process: Optional[str] = None
+        # S14 — Active browser observation
+        self._browser_name: Optional[str] = None
+        self._browser_url: Optional[str] = None
+        self._browser_title: Optional[str] = None
+        self._browser_observed_at: Optional[str] = None
+        self._browser_freshness: str = "UNKNOWN"
+        self._browser_status: str = "UNKNOWN"
+        self._browser_evidence: Optional[str] = None
         self._desktop_observed_at: Optional[str] = None
         self._desktop_freshness: str = "UNKNOWN" 
 
@@ -258,6 +266,13 @@ class ActiveComputerContext:
             self._active_application = None
             self._active_window_title = None
             self._active_window_process = None
+            self._browser_name = None
+            self._browser_url = None
+            self._browser_title = None
+            self._browser_observed_at = None
+            self._browser_freshness = "UNKNOWN"
+            self._browser_status = "UNKNOWN"
+            self._browser_evidence = None
             self._desktop_observed_at = None
             self._desktop_freshness = "UNKNOWN" 
 
@@ -298,6 +313,40 @@ class ActiveComputerContext:
         """S13: Freshness of the last desktop observation."""
         with self._lock:
             return self._desktop_freshness
+
+    @property
+    def browser_name(self) -> Optional[str]:
+        return self._browser_name
+
+    @property
+    def browser_url(self) -> Optional[str]:
+        return self._browser_url
+
+    @property
+    def browser_title(self) -> Optional[str]:
+        return self._browser_title
+
+    @property
+    def browser_freshness(self) -> str:
+        return self._browser_freshness
+
+    @property
+    def browser_status(self) -> str:
+        return self._browser_status
+
+    def get_browser_snapshot(self) -> Optional[dict]:
+        '''Return point-in-time snapshot of active browser context, or None if not a browser.'''
+        if not self._browser_name:
+            return None
+        return {
+            "browser_name": self._browser_name,
+            "page_url": self._browser_url,
+            "page_title": self._browser_title,
+            "observed_at": self._browser_observed_at,
+            "freshness": self._browser_freshness,
+            "status": self._browser_status,
+            "evidence": self._browser_evidence,
+        }
 
     def record_artifact(
         self,

@@ -133,10 +133,80 @@ def get_active_window(args: Dict[str, Any]) -> Dict[str, Any]:
 
 @register("getActiveContext")
 def get_active_context(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Get the full active computer context snapshot including active window, application, matched artifact, working directory, and freshness."""
+    """Get the full active computer context snapshot including active window, application, browser context (S14), matched artifact, working directory, and freshness."""
     import os
     from ..artifacts import active_context
     from .desktop_observer import observe_active_window
+    from .browser_observer import observe_browser_context
+
+    obs = observe_active_window()
+    cwd = os.getcwd()
+
+    if obs.is_available and obs.active_window:
+        active_context._active_window_title = obs.active_window.title
+        active_context._active_window_process = obs.active_window.process_name
+        active_context._active_application = obs.active_window.process_name
+        active_context._desktop_observed_at = obs.observed_at
+        active_context._desktop_freshness = "CURRENT"
+
+        matched = active_context.match_artifact_to_window(obs.active_window.title)
+        matched_locator = matched.canonical_locator if matched else None
+
+        # S14 — Observe browser context when active application is a browser
+        browser_obs = observe_browser_context(obs.active_window.process_name, window_title=obs.active_window.title)
+        browser_dict = None
+        if browser_obs is not None:
+            browser_dict = browser_obs.to_dict()
+            active_context._browser_name = browser_obs.browser_name
+            active_context._browser_url = browser_obs.page_url
+            active_context._browser_title = browser_obs.page_title
+            active_context._browser_observed_at = browser_obs.observed_at
+            active_context._browser_freshness = browser_obs.freshness
+            active_context._browser_status = browser_obs.status
+            active_context._browser_evidence = browser_obs.evidence
+        else:
+            active_context._browser_name = None
+            active_context._browser_url = None
+            active_context._browser_title = None
+            active_context._browser_observed_at = None
+            active_context._browser_freshness = "UNKNOWN"
+            active_context._browser_status = "UNKNOWN"
+            active_context._browser_evidence = None
+
+        return {
+            "active_application": obs.active_window.process_name,
+            "active_window": obs.active_window.title,
+            "active_artifact": matched_locator,
+            "working_directory": cwd,
+            "browser": browser_dict,
+            "freshness": "CURRENT",
+            "observed_at": obs.observed_at,
+            "evidence": obs.active_window.evidence,
+            "verification": {
+                "status": "VERIFIED_SUCCESS",
+                "method": "active_context_snapshot",
+                "detail": f"Active app: {obs.active_window.process_name}, Window: {obs.active_window.title}",
+            },
+        }
+
+    return {
+        "active_application": active_context.active_application,
+        "active_window": None,
+        "active_artifact": (
+            active_context.active_artifact.canonical_locator
+            if active_context.active_artifact else None
+        ),
+        "working_directory": cwd,
+        "browser": active_context.get_browser_snapshot(),
+        "freshness": "UNKNOWN",
+        "observed_at": None,
+        "evidence": "no_active_window_detected",
+        "verification": {
+            "status": "UNKNOWN",
+            "method": "active_context_snapshot",
+            "detail": obs.error or "Active window could not be observed",
+        },
+    }
 
     obs = observe_active_window()
     cwd = os.getcwd()
