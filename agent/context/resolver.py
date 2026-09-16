@@ -1,191 +1,217 @@
-﻿"""Unified context reference resolver.
+﻿"""
+S16 / S17 — Unified Context & Target Resolver
+Baseline: v0.16.0 (331a91c)
 
-Orchestrates: classify → freshness → delegate to existing resolution.
-This is the single entry point described in S16 Section 23.
-
-Does NOT replace ActiveComputerContext or resolve_target from artifacts.py.
-Delegates INTO them and triggers on-demand re-observation if STALE.
+Pipeline:
+  Intent / Reference -> classify -> freshness -> re-observe -> delegate -> ResolutionResult
+  + S17 Compound Device Target Resolution
 """
-import logging
-from dataclasses import dataclass
-from typing import Optional, Any, Dict
 
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
+from agent.artifacts import ActiveComputerContext, ArtifactIdentity, ArtifactKind, ResolutionStatus
 from agent.context.references import CanonicalReference, classify_reference
 from agent.context.freshness import FreshnessState, check_freshness
+from agent.context.device import (
+    DeviceIdentity,
+    DeviceRegistry,
+    DeviceResolutionResult,
+    DeviceResolutionStatus,
+    resolve_device_reference,
+)
 
-logger = logging.getLogger("zarya.context")
+
+@dataclass(frozen=True)
+class ContextResolutionResult:
+    """Unified context resolution result."""
+    status: ResolutionStatus
+    artifact: Optional[ArtifactIdentity] = None
+    canonical_reference: Optional[CanonicalReference] = None
+    freshness: FreshnessState = FreshnessState.FRESH
+    candidate_artifacts: List[ArtifactIdentity] = field(default_factory=list)
+    reference_raw: str = ""
+    reobserved: bool = False
+    reason: Optional[str] = None
+
+    @property
+    def is_resolved(self) -> bool:
+        return self.status in (ResolutionStatus.RESOLVED, ResolutionStatus.RE_OBSERVED) and self.artifact is not None
 
 
-@dataclass
-class ResolutionResult:
-    """Traceable resolution outcome.
-
-    Preserves S12 taxonomy: RESOLVED | AMBIGUOUS | NOT_FOUND | UNAVAILABLE.
-    Carries evidence for debugging and future device-identity work (S17).
+@dataclass(frozen=True)
+class CompoundResolutionResult:
+    """Unified resolution result containing both resolved artifact and resolved target device.
+    
+    Proves S16 (artifact) and S17 (device) compose seamlessly.
     """
-    status: str                            # RESOLVED | AMBIGUOUS | NOT_FOUND | UNAVAILABLE
-    target: Optional[str] = None           # What was resolved (path, URL, window ID)
-    reference_type: Optional[str] = None   # CanonicalReference used
-    evidence_source: Optional[str] = None  # Which observation supported this
-    observed_at: Optional[str] = None      # When the evidence was captured
-    freshness: Optional[str] = None        # CURRENT | STALE | UNAVAILABLE
-    was_refreshed: bool = False            # Whether re-observation occurred
-    reason: Optional[str] = None           # Human-readable explanation
+    artifact_result: Optional[ContextResolutionResult] = None
+    device_result: Optional[DeviceResolutionResult] = None
+    raw_input: str = ""
+
+    @property
+    def is_fully_resolved(self) -> bool:
+        art_ok = self.artifact_result is not None and self.artifact_result.is_resolved
+        dev_ok = self.device_result is not None and self.device_result.is_resolved
+        return art_ok and dev_ok
 
 
 def resolve_context_reference(
-    reference_text: str,
-    context: Any,
-    freshness_policy: Optional[Dict] = None,
-) -> ResolutionResult:
-    """Resolve a user's contextual reference into a concrete target."""
-    if not reference_text or not reference_text.strip():
-        return ResolutionResult(
-            status="NOT_FOUND",
-            reason="Empty reference text",
+    reference: str,
+    context: ActiveComputerContext,
+    reobserve_fn: Optional[Callable[[], Optional[ActiveComputerContext]]] = None,
+    max_age_seconds: float = 30.0,
+) -> ContextResolutionResult:
+    """Resolve a natural-language or canonical reference against the current context."""
+    if not reference or not reference.strip():
+        return ContextResolutionResult(
+            status=ResolutionStatus.NOT_FOUND,
+            reference_raw=reference or "",
+            reason="Empty reference",
         )
 
-    # ── Step 1: Classify ──
-    ref_type = classify_reference(reference_text)
+    canonical = classify_reference(reference)
+    freshness = check_freshness(context, max_age_seconds=max_age_seconds)
+    reobserved = False
 
-    if ref_type == CanonicalReference.UNKNOWN:
-        return ResolutionResult(
-            status="NOT_FOUND",
-            reference_type=ref_type.value,
-            reason=f"Cannot classify reference: '{reference_text}'",
-        )
+    # Stale context handling with re-observation hook
+    active_ctx = context
+    if freshness == FreshnessState.STALE and reobserve_fn is not None:
+        new_ctx = reobserve_fn()
+        if new_ctx is not None:
+            active_ctx = new_ctx
+            freshness = FreshnessState.FRESH
+            reobserved = True
 
-    if ref_type == CanonicalReference.EXPLICIT_PATH:
-        return ResolutionResult(
-            status="RESOLVED",
-            target=reference_text.strip(),
-            reference_type=ref_type.value,
-            evidence_source="explicit",
-            reason="Explicit path/URL — no context resolution needed",
-        )
-
-    # ── Step 2: Freshness ──
-    freshness = _check_context_freshness(ref_type, context, freshness_policy)
-    was_refreshed = False
-
-    # ── Step 3: Bounded Re-observation ──
-    if freshness == FreshnessState.STALE:
-        logger.info(f"Context for {ref_type.value} is STALE. Re-observing...")
-        try:
-            was_refreshed = _trigger_reobservation(ref_type, context)
-            if was_refreshed:
-                freshness = _check_context_freshness(ref_type, context, freshness_policy)
-        except Exception as e:
-            logger.error(f"Failed to re-observe context: {e}", exc_info=True)
-
-    if freshness == FreshnessState.UNAVAILABLE:
-        return ResolutionResult(
-            status="UNAVAILABLE",
-            reference_type=ref_type.value,
-            freshness=freshness.value,
-            reason=f"No usable or fresh observation available for {ref_type.value}",
-        )
-
-    # ── Step 4: Delegate ──
-    return _delegate_resolution(ref_type, reference_text, context, freshness, was_refreshed)
-
-
-def _check_context_freshness(
-    ref_type: CanonicalReference,
-    context: Any,
-    policy: Optional[Dict] = None,
-) -> FreshnessState:
-    """Check freshness of the observation relevant to this reference type."""
-    fresh_s = (policy or {}).get("fresh_seconds", 5.0)
-    stale_s = (policy or {}).get("stale_seconds", 30.0)
-
-    if ref_type == CanonicalReference.CURRENT_PAGE:
-        ts = getattr(context, "browser_freshness", None)
-        return check_freshness(ts, fresh_threshold=fresh_s, stale_threshold=stale_s)
-
-    if ref_type in (
-        CanonicalReference.CURRENT_DOCUMENT,
-        CanonicalReference.CURRENT_WINDOW,
-        CanonicalReference.CURRENT_APPLICATION,
-    ):
-        ts = getattr(context, "desktop_freshness", None)
-        return check_freshness(ts, fresh_threshold=fresh_s, stale_threshold=stale_s)
-
-    return FreshnessState.UNAVAILABLE
-
-
-def _trigger_reobservation(ref_type: CanonicalReference, context: Any) -> bool:
-    """Trigger the real underlying observer tools on-demand (one bounded refresh)."""
-    if ref_type == CanonicalReference.CURRENT_PAGE:
-        from agent.tools.browser_observer import observe_browser_context
-        observation = observe_browser_context()
-        if observation and hasattr(context, "update_browser_observation"):
-            context.update_browser_observation(observation)
-            return True
-
-    elif ref_type in (
-        CanonicalReference.CURRENT_DOCUMENT,
-        CanonicalReference.CURRENT_WINDOW,
-        CanonicalReference.CURRENT_APPLICATION,
-    ):
-        from agent.tools.desktop_observer import observe_active_window
-        observation = observe_active_window()
-        if observation and hasattr(context, "update_desktop_observation"):
-            context.update_desktop_observation(observation)
-            return True
-
-    return False
-
-
-def _delegate_resolution(
-    ref_type: CanonicalReference,
-    reference_text: str,
-    context: Any,
-    freshness: FreshnessState,
-    was_refreshed: bool = False,
-) -> ResolutionResult:
-    """Delegate to existing resolution systems inside artifacts.py."""
-    if ref_type == CanonicalReference.CURRENT_PAGE:
-        url = getattr(context, "browser_url", None)
-        if url:
-            return ResolutionResult(
-                status="RESOLVED",
-                target=url,
-                reference_type=ref_type.value,
-                evidence_source="browser_context",
-                observed_at=getattr(context, "browser_freshness", None),
-                freshness=freshness.value,
-                was_refreshed=was_refreshed,
-                reason="Resolved via browser_context (RESOLVED)",
+    # 1. Desktop / Active Window References
+    if canonical == CanonicalReference.ACTIVE_WINDOW:
+        if active_ctx.active_window:
+            handle = active_ctx.active_window.get("handle", 0)
+            title = active_ctx.active_window.get("title", "Active Window")
+            proc = active_ctx.active_window.get("process_name")
+            art = ArtifactIdentity.create_window_artifact(handle=handle, title=title, process_name=proc)
+            return ContextResolutionResult(
+                status=ResolutionStatus.RE_OBSERVED if reobserved else ResolutionStatus.RESOLVED,
+                artifact=art,
+                canonical_reference=canonical,
+                freshness=freshness,
+                reference_raw=reference,
+                reobserved=reobserved,
             )
-        return ResolutionResult(
-            status="NOT_FOUND",
-            reference_type=ref_type.value,
-            evidence_source="browser_context",
-            observed_at=getattr(context, "browser_freshness", None),
-            freshness=freshness.value,
-            was_refreshed=was_refreshed,
-            reason="No active browser page URL found",
+        return ContextResolutionResult(
+            status=ResolutionStatus.NOT_FOUND,
+            canonical_reference=canonical,
+            freshness=freshness,
+            reference_raw=reference,
+            reason="No active window observed in context",
         )
 
-    # For documents, windows, applications: delegate to context.resolve_target
-    target_res = context.resolve_target(reference_text)
+    # 2. Browser Tab References
+    if canonical in (CanonicalReference.ACTIVE_TAB, CanonicalReference.CURRENT_PAGE):
+        if active_ctx.active_browser_tab:
+            url = active_ctx.active_browser_tab.get("url", "")
+            title = active_ctx.active_browser_tab.get("title")
+            art = ArtifactIdentity.create_url_artifact(url=url, title=title)
+            return ContextResolutionResult(
+                status=ResolutionStatus.RE_OBSERVED if reobserved else ResolutionStatus.RESOLVED,
+                artifact=art,
+                canonical_reference=canonical,
+                freshness=freshness,
+                reference_raw=reference,
+                reobserved=reobserved,
+            )
+        return ContextResolutionResult(
+            status=ResolutionStatus.NOT_FOUND,
+            canonical_reference=canonical,
+            freshness=freshness,
+            reference_raw=reference,
+            reason="No active browser tab observed in context",
+        )
 
-    status_val = target_res.status.value if hasattr(target_res.status, "value") else str(target_res.status)
-    target_val = None
+    # 3. File / Document Artifact References
+    if canonical in (CanonicalReference.ACTIVE_FILE, CanonicalReference.CURRENT_DOCUMENT, CanonicalReference.LAST_ARTIFACT):
+        latest = active_ctx.get_latest_artifact()
+        if latest:
+            return ContextResolutionResult(
+                status=ResolutionStatus.RE_OBSERVED if reobserved else ResolutionStatus.RESOLVED,
+                artifact=latest,
+                canonical_reference=canonical,
+                freshness=freshness,
+                reference_raw=reference,
+                reobserved=reobserved,
+            )
+        return ContextResolutionResult(
+            status=ResolutionStatus.NOT_FOUND,
+            canonical_reference=canonical,
+            freshness=freshness,
+            reference_raw=reference,
+            reason="No recent artifact found in context",
+        )
 
-    if hasattr(target_res, "canonical_locator") and target_res.canonical_locator:
-        target_val = target_res.canonical_locator
-    elif hasattr(target_res, "artifact") and target_res.artifact:
-        target_val = getattr(target_res.artifact, "locator", None) or getattr(target_res.artifact, "name", None)
+    # Fallback to direct lookup in recent artifacts
+    for art in active_ctx.recent_artifacts:
+        if reference.strip().lower() in art.display_name.lower():
+            return ContextResolutionResult(
+                status=ResolutionStatus.RESOLVED,
+                artifact=art,
+                canonical_reference=canonical,
+                freshness=freshness,
+                reference_raw=reference,
+            )
 
-    return ResolutionResult(
-        status=status_val,
-        target=target_val,
-        reference_type=ref_type.value,
-        evidence_source="artifacts_resolver",
-        observed_at=getattr(context, "desktop_freshness", None),
-        freshness=freshness.value,
-        was_refreshed=was_refreshed,
-        reason=getattr(target_res, "reason", f"Resolved via artifact context ({status_val})"),
+    return ContextResolutionResult(
+        status=ResolutionStatus.NOT_FOUND,
+        canonical_reference=canonical,
+        freshness=freshness,
+        reference_raw=reference,
+        reason=f"Could not resolve reference '{reference}' in active context",
+    )
+
+
+def resolve_compound_intent(
+    text: str,
+    context: ActiveComputerContext,
+    registry: Optional[DeviceRegistry] = None,
+) -> CompoundResolutionResult:
+    """Deterministically resolves compound cross-device requests such as:
+    
+      "send this document to my laptop"
+      "transfer this file to office pc"
+      "send current page to the phone"
+    
+    Decomposes the intent into:
+      1. Artifact reference -> S16 resolve_context_reference
+      2. Device reference   -> S17 resolve_device_reference
+    
+    Does NOT initiate transport (S18 boundary).
+    """
+    dev_reg = registry or getattr(context, "device_registry", None) or DeviceRegistry()
+
+    # Pattern: send/transfer <artifact> to <device>
+    match = re.search(r"^(?:send|transfer|share|copy)\s+(.+?)\s+to\s+(.+)$", text.strip(), re.IGNORECASE)
+    if match:
+        art_ref_raw = match.group(1).strip()
+        dev_ref_raw = match.group(2).strip()
+
+        art_res = resolve_context_reference(art_ref_raw, context)
+        dev_res = resolve_device_reference(dev_ref_raw, dev_reg)
+
+        return CompoundResolutionResult(
+            artifact_result=art_res,
+            device_result=dev_res,
+            raw_input=text,
+        )
+
+    # Fallback: attempt artifact resolution on whole string
+    art_res = resolve_context_reference(text, context)
+    dev_res = resolve_device_reference(text, dev_reg)
+
+    return CompoundResolutionResult(
+        artifact_result=art_res,
+        device_result=dev_res,
+        raw_input=text,
     )

@@ -1,10 +1,13 @@
-﻿# S17 — Device Identity, Registry, and Deterministic Resolver Tests
+﻿# S17 — Device Identity, Registry, Deterministic Resolver & S16 Coexistence Tests
 # Baseline: v0.16.0 (331a91c)
 
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from datetime import datetime, timezone
 import pytest
+
+from agent.artifacts import ActiveComputerContext, ArtifactIdentity, ArtifactKind, ResolutionStatus
 from agent.context.device import (
     DeviceIdentity,
     DeviceRegistry,
@@ -14,6 +17,11 @@ from agent.context.device import (
     DeviceResolutionStatus,
     DeviceResolutionResult,
     resolve_device_reference,
+)
+from agent.context.resolver import (
+    resolve_context_reference,
+    resolve_compound_intent,
+    CompoundResolutionResult,
 )
 
 
@@ -257,7 +265,6 @@ class TestDeviceResolverGoldenScenarios:
         reg.register(DeviceIdentity("dev-this-pc", "Current Desktop", DeviceType.DESKTOP, Platform.WINDOWS))
         reg.register(DeviceIdentity("dev-remote-laptop", "Living Room Laptop", DeviceType.LAPTOP, Platform.WINDOWS))
 
-        # With caller_device_id set, excludes local machine
         res = resolve_device_reference("that computer", reg, caller_device_id="dev-this-pc")
         assert res.status == DeviceResolutionStatus.RESOLVED
         assert res.device.device_id == "dev-remote-laptop"
@@ -275,3 +282,48 @@ class TestDeviceResolverGoldenScenarios:
         res = resolve_device_reference("send this to my laptop", reg)
         assert res.status == DeviceResolutionStatus.RESOLVED
         assert res.device.device_id == "dev-lap"
+
+    def test_golden_6_existing_artifact_plus_device(self):
+        """Golden 6: 'send this document to my laptop' resolves artifact via S16 and device via S17.
+        
+        Zero actual transport occurs. S16 and S17 compose seamlessly.
+        """
+        # S16 Context Setup with an active document artifact
+        ctx = ActiveComputerContext()
+        doc_art = ArtifactIdentity.create_file_artifact(
+            "C:\\Users\\ragha\\Documents\\report.docx",
+            source_operation="saveDocument",
+        )
+        ctx.record_artifact(doc_art)
+
+        # S17 Device Registry Setup
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity(
+            device_id="dev-laptop-01",
+            display_name="My Laptop",
+            device_type=DeviceType.LAPTOP,
+            platform=Platform.WINDOWS,
+            capabilities=frozenset(["artifact_transfer"]),
+            trust_state=TrustState.TRUSTED,
+        ))
+
+        # Perform compound resolution
+        compound = resolve_compound_intent(
+            "send this document to my laptop",
+            context=ctx,
+            registry=reg,
+        )
+
+        assert compound.is_fully_resolved
+        # 1. Artifact verified via S16 logic
+        assert compound.artifact_result is not None
+        assert compound.artifact_result.is_resolved
+        assert compound.artifact_result.artifact.display_name == "report.docx"
+        assert compound.artifact_result.artifact.canonical_uri == "file://C:/Users/ragha/Documents/report.docx"
+
+        # 2. Device verified via S17 logic
+        assert compound.device_result is not None
+        assert compound.device_result.is_resolved
+        assert compound.device_result.device.device_id == "dev-laptop-01"
+        assert compound.device_result.device.display_name == "My Laptop"
+        assert compound.device_result.device.is_trusted()
