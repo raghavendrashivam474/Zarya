@@ -26,6 +26,8 @@ from .adaptive_work import (
     reassess,
 )
 from .artifacts import active_context, resolve_target, PRONOUN_REFERENCES, ResolutionStatus
+from agent.context.resolver import resolve_context_reference
+from agent.context.references import classify_reference, CanonicalReference
 
 # Ensure tools are loaded when work executor is imported
 load_all()
@@ -70,7 +72,19 @@ def _interpolate_step_args(
             val_strip = val.strip()
             val_lower = val_strip.lower()
 
-            # 1. Exact pronoun / placeholder reference
+            # S16: Try unified context resolver first for natural-language references
+            # Skip template variables ($, {{) ? those are S12's domain
+            if not val_strip.startswith("$") and "{{" not in val_strip:
+                ref_type = classify_reference(val_strip)
+                if ref_type not in (CanonicalReference.UNKNOWN,):
+                    s16_result = resolve_context_reference(val_strip, ctx)
+                    if s16_result.status == "RESOLVED" and s16_result.target:
+                        resolved_args[k] = s16_result.target
+                        log.info("S16 work: resolved arg '%s': '%s' -> '%s' (via %s, freshness=%s)",
+                                 k, val, s16_result.target, s16_result.evidence_source, s16_result.freshness)
+                        continue  # Skip S12 fallback for this arg
+
+            # S12: Exact pronoun / placeholder reference (fallback)
             if val_lower in PRONOUN_REFERENCES or val_strip.startswith("$") or "{{" in val_strip:
                 resolution = ctx.resolve_target(val_strip)
                 if resolution.is_resolved and resolution.canonical_locator:
