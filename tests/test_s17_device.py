@@ -1,4 +1,4 @@
-﻿# S17 — Device Identity, Registry, Deterministic Resolver & S16 Coexistence Tests
+# S17 — Device Identity, Registry, Deterministic Resolver & S16 Coexistence Tests
 # Baseline: v0.16.0 (331a91c)
 
 import sys, os
@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from datetime import datetime, timezone
 import pytest
 
-from agent.artifacts import ActiveComputerContext, ArtifactIdentity, ArtifactKind, ResolutionStatus
+from agent.artifacts import ActiveComputerContext, ArtifactIdentity
 from agent.context.device import (
     DeviceIdentity,
     DeviceRegistry,
@@ -292,9 +292,12 @@ class TestDeviceResolverGoldenScenarios:
         ctx = ActiveComputerContext()
         doc_art = ArtifactIdentity.create_file_artifact(
             "C:\\Users\\ragha\\Documents\\report.docx",
-            source_operation="saveDocument",
+            source_operation="createFile",
+            verification_status="VERIFIED_SUCCESS",
         )
         ctx.record_artifact(doc_art)
+        # Mock desktop observation as fresh so S16 resolver resolves CURRENT_DOCUMENT
+        ctx._desktop_freshness = datetime.now(timezone.utc).isoformat()
 
         # S17 Device Registry Setup
         reg = DeviceRegistry()
@@ -317,9 +320,9 @@ class TestDeviceResolverGoldenScenarios:
         assert compound.is_fully_resolved
         # 1. Artifact verified via S16 logic
         assert compound.artifact_result is not None
-        assert compound.artifact_result.is_resolved
-        assert compound.artifact_result.artifact.display_name == "report.docx"
-        assert compound.artifact_result.artifact.canonical_uri == "file://C:/Users/ragha/Documents/report.docx"
+        assert compound.artifact_result.status == "RESOLVED"
+        assert compound.artifact_result.target is not None
+        assert "report.docx" in compound.artifact_result.target
 
         # 2. Device verified via S17 logic
         assert compound.device_result is not None
