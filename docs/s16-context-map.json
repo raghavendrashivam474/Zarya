@@ -1,0 +1,160 @@
+﻿{
+    "agent/tools/windows.py":  {
+                                   "Functions":  [
+                                                     "_resolve_target",
+                                                     "minimize_window",
+                                                     "maximize_window",
+                                                     "close_window",
+                                                     "switch_application",
+                                                     "get_active_window",
+                                                     "get_active_context"
+                                                 ],
+                                   "LineCount":  255,
+                                   "Classes":  {
+
+                                               },
+                                   "Constants":  {
+
+                                                 }
+                               },
+    "agent/tools/browser.py":  {
+                                   "Functions":  [
+                                                     "_get_loop",
+                                                     "_run_loop",
+                                                     "_run",
+                                                     "_browser_mode",
+                                                     "_get_zarya_browser_data_dir",
+                                                     "_normalize_url",
+                                                     "desktopBrowserOpen",
+                                                     "desktopBrowserOpenYoutubeVideo",
+                                                     "desktopBrowserNavigate",
+                                                     "desktopBrowserReadText",
+                                                     "desktopBrowserSetMode"
+                                                 ],
+                                   "LineCount":  289,
+                                   "Classes":  {
+
+                                               },
+                                   "Constants":  {
+
+                                                 }
+                               },
+    "agent/intent.py":  {
+                            "Functions":  [
+                                              "to_s6_plan",
+                                              "__init__",
+                                              "interpret",
+                                              "validate",
+                                              "translate",
+                                              "process_natural_intent"
+                                          ],
+                            "LineCount":  591,
+                            "Classes":  [
+                                            "S8Step",
+                                            "S8WorkPlan",
+                                            "IntentInterpreter",
+                                            "PlanValidator",
+                                            "ResponseTranslator"
+                                        ],
+                            "Constants":  {
+
+                                          }
+                        },
+    "agent/work.py":  {
+                          "Functions":  [
+                                            "_interpolate_step_args",
+                                            "validate_plan",
+                                            "_evaluate_step_outcome",
+                                            "_emit_step_event",
+                                            "execute_work"
+                                        ],
+                          "LineCount":  400,
+                          "Classes":  {
+
+                                      },
+                          "Constants":  {
+
+                                        }
+                      },
+    "agent/tools/desktop_observer.py":  {
+                                            "Functions":  [
+                                                              "to_dict",
+                                                              "is_available",
+                                                              "to_dict",
+                                                              "_now_iso",
+                                                              "_get_foreground_window_title",
+                                                              "_get_process_name_from_pid",
+                                                              "observe_active_window"
+                                                          ],
+                                            "LineCount":  163,
+                                            "Classes":  [
+                                                            "WindowObservation",
+                                                            "DesktopObservation"
+                                                        ],
+                                            "Constants":  {
+
+                                                          }
+                                        },
+    "agent/tools/browser_observer.py":  {
+                                            "Functions":  [
+                                                              "is_browser_process",
+                                                              "to_dict",
+                                                              "_now_iso",
+                                                              "_friendly_browser_name",
+                                                              "observe_browser_context"
+                                                          ],
+                                            "LineCount":  286,
+                                            "Classes":  "BrowserObservation",
+                                            "Constants":  {
+
+                                                          }
+                                        },
+    "agent/artifacts.py":  {
+                               "Functions":  [
+                                                 "_now_iso",
+                                                 "canonicalize_locator",
+                                                 "to_dict",
+                                                 "from_dict",
+                                                 "create_file_artifact",
+                                                 "create_application_artifact",
+                                                 "is_resolved",
+                                                 "__init__",
+                                                 "clear",
+                                                 "active_artifact",
+                                                 "last_created_artifact",
+                                                 "last_verified_artifact",
+                                                 "active_application",
+                                                 "active_window_title",
+                                                 "active_window_process",
+                                                 "desktop_freshness",
+                                                 "browser_name",
+                                                 "browser_url",
+                                                 "browser_title",
+                                                 "browser_freshness",
+                                                 "browser_status",
+                                                 "get_browser_snapshot",
+                                                 "record_artifact",
+                                                 "reset",
+                                                 "update_from_tool_response",
+                                                 "observe_desktop",
+                                                 "get_desktop_snapshot",
+                                                 "match_artifact_to_window",
+                                                 "resolve_target",
+                                                 "resolve_target"
+                                             ],
+                               "LineCount":  737,
+                               "Classes":  [
+                                               "ArtifactType",
+                                               "ResolutionStatus",
+                                               "ArtifactIdentity",
+                                               "TargetResolution",
+                                               "ActiveComputerContext"
+                                           ],
+                               "Constants":  [
+                                                 "RESOLVED = \"RESOLVED\"",
+                                                 "AMBIGUOUS = \"AMBIGUOUS\"",
+                                                 "NOT_FOUND = \"NOT_FOUND\"",
+                                                 "UNAVAILABLE = \"UNAVAILABLE\""
+                                             ]
+                           }
+}
