@@ -1,4 +1,4 @@
-﻿# S17 — Device Identity & Registry Tests
+﻿# S17 — Device Identity, Registry, and Deterministic Resolver Tests
 # Baseline: v0.16.0 (331a91c)
 
 import sys, os
@@ -12,6 +12,8 @@ from agent.context.device import (
     Platform,
     TrustState,
     DeviceResolutionStatus,
+    DeviceResolutionResult,
+    resolve_device_reference,
 )
 
 
@@ -47,7 +49,7 @@ class TestDeviceModel:
         assert dev.platform == Platform.WINDOWS
         assert dev.is_trusted()
         assert dev.has_capability("artifact_transfer")
-        assert dev.has_capability("ARTIFACT_TRANSFER")  # case-insensitive
+        assert dev.has_capability("ARTIFACT_TRANSFER")
         assert not dev.has_capability("remote_exec")
 
     def test_string_coercion_for_enums(self):
@@ -142,7 +144,6 @@ class TestDeviceRegistry:
         assert len(matches) == 1
         assert matches[0].device_id == "dev-laptop"
 
-        # Case sensitivity
         assert len(registry.get_by_name("my laptop", case_sensitive=True)) == 0
         assert len(registry.get_by_name("My Laptop", case_sensitive=True)) == 1
 
@@ -178,3 +179,99 @@ class TestDeviceRegistry:
         restored = DeviceRegistry.from_list(data)
         assert len(restored) == 3
         assert restored.get("dev-laptop").display_name == "My Laptop"
+
+
+class TestDeviceResolverGoldenScenarios:
+    """Golden scenarios explicitly mandated by S17 Engineering Brief Section 22."""
+
+    def test_golden_1_device_resolution(self):
+        """Golden 1: 'my laptop' resolves deterministically to the single laptop."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-laptop-01", "My Laptop", DeviceType.LAPTOP, Platform.WINDOWS))
+        
+        res = resolve_device_reference("my laptop", reg)
+        assert res.status == DeviceResolutionStatus.RESOLVED
+        assert res.is_resolved
+        assert res.device is not None
+        assert res.device.device_id == "dev-laptop-01"
+
+    def test_golden_2_multiple_matching_devices_ambiguous(self):
+        """Golden 2: 'the laptop' with 2 laptops produces AMBIGUOUS, never guessing."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-laptop-01", "My Laptop", DeviceType.LAPTOP, Platform.WINDOWS))
+        reg.register(DeviceIdentity("dev-laptop-02", "Office Laptop", DeviceType.LAPTOP, Platform.MACOS))
+
+        res = resolve_device_reference("the laptop", reg)
+        assert res.status == DeviceResolutionStatus.AMBIGUOUS
+        assert not res.is_resolved
+        assert res.device is None
+        assert len(res.candidate_devices) == 2
+        assert {d.device_id for d in res.candidate_devices} == {"dev-laptop-01", "dev-laptop-02"}
+
+    def test_golden_3_unknown_device_not_found(self):
+        """Golden 3: 'my quantum server' returns NOT_FOUND with zero guessing."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-laptop-01", "My Laptop", DeviceType.LAPTOP, Platform.WINDOWS))
+
+        res = resolve_device_reference("my quantum server", reg)
+        assert res.status == DeviceResolutionStatus.NOT_FOUND
+        assert not res.is_resolved
+        assert res.device is None
+        assert len(res.candidate_devices) == 0
+
+    def test_golden_4_known_but_unavailable(self):
+        """Golden 4: 'my laptop' when is_available=False returns UNAVAILABLE."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-laptop-01", "My Laptop", DeviceType.LAPTOP, Platform.WINDOWS, is_available=False))
+
+        res = resolve_device_reference("my laptop", reg)
+        assert res.status == DeviceResolutionStatus.UNAVAILABLE
+        assert not res.is_resolved
+        assert res.device is not None
+        assert res.device.device_id == "dev-laptop-01"
+        assert res.device.is_available is False
+
+    def test_golden_5_trust_separation(self):
+        """Golden 5: Untrusted device resolves, but trust_state remains UNTRUSTED. Context != Authorization."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-phone-01", "My Phone", DeviceType.MOBILE, Platform.ANDROID, trust_state=TrustState.UNTRUSTED))
+
+        res = resolve_device_reference("my phone", reg)
+        assert res.status == DeviceResolutionStatus.RESOLVED
+        assert res.device is not None
+        assert res.device.trust_state == TrustState.UNTRUSTED
+        assert not res.device.is_trusted()
+
+    def test_explicit_device_id_resolution(self):
+        """Explicit device IDs resolve immediately."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-7e3-node", "Custom Workstation", DeviceType.DESKTOP, Platform.LINUX))
+
+        res = resolve_device_reference("dev-7e3-node", reg)
+        assert res.status == DeviceResolutionStatus.RESOLVED
+        assert res.device.device_id == "dev-7e3-node"
+
+    def test_relative_reference_with_caller_exclusion(self):
+        """'that computer' resolves when exactly one other computer exists."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-this-pc", "Current Desktop", DeviceType.DESKTOP, Platform.WINDOWS))
+        reg.register(DeviceIdentity("dev-remote-laptop", "Living Room Laptop", DeviceType.LAPTOP, Platform.WINDOWS))
+
+        # With caller_device_id set, excludes local machine
+        res = resolve_device_reference("that computer", reg, caller_device_id="dev-this-pc")
+        assert res.status == DeviceResolutionStatus.RESOLVED
+        assert res.device.device_id == "dev-remote-laptop"
+
+    def test_empty_and_whitespace_reference(self):
+        reg = DeviceRegistry()
+        assert resolve_device_reference("", reg).status == DeviceResolutionStatus.NOT_FOUND
+        assert resolve_device_reference("   ", reg).status == DeviceResolutionStatus.NOT_FOUND
+
+    def test_action_prefix_stripping(self):
+        """'send this to my laptop' correctly isolates 'my laptop'."""
+        reg = DeviceRegistry()
+        reg.register(DeviceIdentity("dev-lap", "Personal Laptop", DeviceType.LAPTOP, Platform.MACOS))
+
+        res = resolve_device_reference("send this to my laptop", reg)
+        assert res.status == DeviceResolutionStatus.RESOLVED
+        assert res.device.device_id == "dev-lap"

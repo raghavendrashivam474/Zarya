@@ -12,6 +12,8 @@ from agent.context.device import (
     Platform,
     TrustState,
     DeviceResolutionStatus,
+    DeviceResolutionResult,
+    resolve_device_reference,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     "Platform",
     "TrustState",
     "DeviceResolutionStatus",
+    "DeviceResolutionResult",
+    "resolve_device_reference",
 ]
