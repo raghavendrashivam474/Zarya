@@ -5,6 +5,7 @@ Baseline: v0.16.0 (331a91c)
 Owns:
   - DeviceType, Platform, TrustState, DeviceResolutionStatus enums
   - DeviceIdentity dataclass
+  - DeviceRegistry (local, thread-safe in-memory device store)
   - Model serialization and validation
 
 Does NOT own:
@@ -15,9 +16,10 @@ Does NOT own:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import threading
+from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Any, Dict, FrozenSet, Optional, Set, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Union
 
 
 class DeviceType(str, Enum):
@@ -151,3 +153,125 @@ class DeviceIdentity:
             is_available=bool(data.get("is_available", True)),
             metadata=dict(data.get("metadata", {})),
         )
+
+
+class DeviceRegistry:
+    """Thread-safe in-memory registry of logical devices.
+    
+    Acts as the authoritative local source of known devices for Zarya.
+    Does NOT perform network discovery.
+    """
+
+    def __init__(self) -> None:
+        self._devices: Dict[str, DeviceIdentity] = {}
+        self._lock = threading.RLock()
+
+    def register(self, device: DeviceIdentity) -> None:
+        """Register or update a device identity in the local registry."""
+        if not isinstance(device, DeviceIdentity):
+            raise TypeError("Expected DeviceIdentity instance")
+        with self._lock:
+            self._devices[device.device_id] = device
+
+    def unregister(self, device_id: str) -> Optional[DeviceIdentity]:
+        """Remove a device by its device_id. Returns the removed device or None."""
+        if not device_id:
+            return None
+        with self._lock:
+            return self._devices.pop(device_id, None)
+
+    def get(self, device_id: str) -> Optional[DeviceIdentity]:
+        """Lookup a device by device_id."""
+        if not device_id:
+            return None
+        with self._lock:
+            return self._devices.get(device_id)
+
+    def get_by_name(self, display_name: str, case_sensitive: bool = False) -> List[DeviceIdentity]:
+        """Find devices by display_name."""
+        if not display_name or not display_name.strip():
+            return []
+        target = display_name if case_sensitive else display_name.strip().lower()
+        with self._lock:
+            matches = []
+            for dev in self._devices.values():
+                name = dev.display_name if case_sensitive else dev.display_name.strip().lower()
+                if name == target:
+                    matches.append(dev)
+            return sorted(matches, key=lambda d: d.device_id)
+
+    def list_devices(
+        self,
+        device_type: Optional[Union[DeviceType, str]] = None,
+        platform: Optional[Union[Platform, str]] = None,
+        only_available: bool = False,
+        only_trusted: bool = False,
+    ) -> List[DeviceIdentity]:
+        """List devices matching optional filters, sorted deterministically by device_id."""
+        target_type = DeviceType.from_string(device_type) if isinstance(device_type, str) else device_type
+        target_plat = Platform.from_string(platform) if isinstance(platform, str) else platform
+
+        with self._lock:
+            results = []
+            for dev in self._devices.values():
+                if target_type is not None and dev.device_type != target_type:
+                    continue
+                if target_plat is not None and dev.platform != target_plat:
+                    continue
+                if only_available and not dev.is_available:
+                    continue
+                if only_trusted and not dev.is_trusted():
+                    continue
+                results.append(dev)
+            return sorted(results, key=lambda d: d.device_id)
+
+    def set_availability(self, device_id: str, is_available: bool) -> Optional[DeviceIdentity]:
+        """Update a device's availability flag atomically."""
+        with self._lock:
+            dev = self._devices.get(device_id)
+            if dev is None:
+                return None
+            updated = replace(dev, is_available=bool(is_available))
+            self._devices[device_id] = updated
+            return updated
+
+    def set_trust_state(self, device_id: str, trust_state: Union[TrustState, str]) -> Optional[DeviceIdentity]:
+        """Update a device's trust state atomically."""
+        state = TrustState.from_string(trust_state) if isinstance(trust_state, str) else trust_state
+        with self._lock:
+            dev = self._devices.get(device_id)
+            if dev is None:
+                return None
+            updated = replace(dev, trust_state=state)
+            self._devices[device_id] = updated
+            return updated
+
+    def clear(self) -> None:
+        """Clear all registered devices."""
+        with self._lock:
+            self._devices.clear()
+
+    def count(self) -> int:
+        """Return total number of registered devices."""
+        with self._lock:
+            return len(self._devices)
+
+    def __len__(self) -> int:
+        return self.count()
+
+    def __contains__(self, device_id: str) -> bool:
+        with self._lock:
+            return device_id in self._devices
+
+    def to_list(self) -> List[Dict[str, Any]]:
+        """Serialize all devices in the registry to a sorted list of dicts."""
+        with self._lock:
+            return [d.to_dict() for d in sorted(self._devices.values(), key=lambda d: d.device_id)]
+
+    @classmethod
+    def from_list(cls, data: List[Dict[str, Any]]) -> DeviceRegistry:
+        """Construct a DeviceRegistry from serialized list."""
+        reg = cls()
+        for item in data:
+            reg.register(DeviceIdentity.from_dict(item))
+        return reg

@@ -7,6 +7,7 @@ from agent.context.freshness import FreshnessState, check_freshness
 from agent.context.resolver import resolve_context_reference
 from agent.context.device import (
     DeviceIdentity,
+    DeviceRegistry,
     DeviceType,
     Platform,
     TrustState,
@@ -20,6 +21,7 @@ __all__ = [
     "check_freshness",
     "resolve_context_reference",
     "DeviceIdentity",
+    "DeviceRegistry",
     "DeviceType",
     "Platform",
     "TrustState",
