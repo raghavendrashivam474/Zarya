@@ -1,6 +1,9 @@
 ﻿# S17 — Device Identity Tests
 # Baseline: v0.16.0 (331a91c)
 
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import pytest
 from agent.context.device import (
     DeviceIdentity,
