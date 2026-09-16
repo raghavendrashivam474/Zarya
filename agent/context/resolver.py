@@ -38,23 +38,13 @@ def resolve_context_reference(
     context: Any,
     freshness_policy: Optional[Dict] = None,
 ) -> ResolutionResult:
-    """Resolve a user's contextual reference into a concrete target.
+    """Resolve a user's contextual reference into a concrete target."""
+    if not reference_text or not reference_text.strip():
+        return ResolutionResult(
+            status="NOT_FOUND",
+            reason="Empty reference text",
+        )
 
-    Pipeline (S16 Section 2):
-        1. Classify reference (deterministic, no LLM)
-        2. Check freshness of relevant observation
-        3. Re-observe if STALE (bounded, one attempt)
-        4. Delegate to existing resolve_target()
-        5. Return traceable result
-
-    Args:
-        reference_text: Natural language reference ("this document", etc.).
-        context: ActiveComputerContext from agent.artifacts.
-        freshness_policy: Optional threshold overrides.
-
-    Returns:
-        ResolutionResult with full evidence trail.
-    """
     # ── Step 1: Classify ──
     ref_type = classify_reference(reference_text)
 
@@ -96,7 +86,7 @@ def resolve_context_reference(
             reason=f"No usable or fresh observation available for {ref_type.value}",
         )
 
-    # ── Step 4: Delegate to existing resolution system ──
+    # ── Step 4: Delegate ──
     return _delegate_resolution(ref_type, reference_text, context, freshness, was_refreshed)
 
 
@@ -129,10 +119,8 @@ def _trigger_reobservation(ref_type: CanonicalReference, context: Any) -> bool:
     if ref_type == CanonicalReference.CURRENT_PAGE:
         from agent.tools.browser_observer import observe_browser_context
         observation = observe_browser_context()
-        if observation:
-            obs_dict = observation.to_dict() if hasattr(observation, "to_dict") else observation
-            if hasattr(context, "update_from_tool_response"):
-                context.update_from_tool_response("desktopBrowserObserve", {}, {"observation": obs_dict, "browser_observation": obs_dict})
+        if observation and hasattr(context, "update_browser_observation"):
+            context.update_browser_observation(observation)
             return True
 
     elif ref_type in (
@@ -142,10 +130,8 @@ def _trigger_reobservation(ref_type: CanonicalReference, context: Any) -> bool:
     ):
         from agent.tools.desktop_observer import observe_active_window
         observation = observe_active_window()
-        if observation:
-            obs_dict = observation.to_dict() if hasattr(observation, "to_dict") else observation
-            if hasattr(context, "update_from_tool_response"):
-                context.update_from_tool_response("desktopObserve", {}, {"observation": obs_dict, "desktop_observation": obs_dict})
+        if observation and hasattr(context, "update_desktop_observation"):
+            context.update_desktop_observation(observation)
             return True
 
     return False
@@ -159,8 +145,6 @@ def _delegate_resolution(
     was_refreshed: bool = False,
 ) -> ResolutionResult:
     """Delegate to existing resolution systems inside artifacts.py."""
-    import agent.artifacts as art
-
     if ref_type == CanonicalReference.CURRENT_PAGE:
         url = getattr(context, "browser_url", None)
         if url:
@@ -174,21 +158,19 @@ def _delegate_resolution(
                 was_refreshed=was_refreshed,
                 reason="Resolved via browser_context (RESOLVED)",
             )
-        else:
-            return ResolutionResult(
-                status="NOT_FOUND",
-                reference_type=ref_type.value,
-                evidence_source="browser_context",
-                observed_at=getattr(context, "browser_freshness", None),
-                freshness=freshness.value,
-                was_refreshed=was_refreshed,
-                reason="No active browser page URL found",
-            )
+        return ResolutionResult(
+            status="NOT_FOUND",
+            reference_type=ref_type.value,
+            evidence_source="browser_context",
+            observed_at=getattr(context, "browser_freshness", None),
+            freshness=freshness.value,
+            was_refreshed=was_refreshed,
+            reason="No active browser page URL found",
+        )
 
     # For documents, windows, applications: delegate to context.resolve_target
     target_res = context.resolve_target(reference_text)
 
-    # Extract status
     status_val = target_res.status.value if hasattr(target_res.status, "value") else str(target_res.status)
     target_val = None
 
