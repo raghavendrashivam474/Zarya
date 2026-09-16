@@ -334,6 +334,59 @@ class ActiveComputerContext:
     def browser_status(self) -> str:
         return self._browser_status
 
+    def update_browser_observation(self, obs: Any) -> None:
+        """S16: Update active browser context from BrowserObservation or dict."""
+        with self._lock:
+            if obs is None:
+                self._browser_name = None
+                self._browser_url = None
+                self._browser_title = None
+                self._browser_observed_at = None
+                self._browser_freshness = "UNKNOWN"
+                self._browser_status = "UNKNOWN"
+                self._browser_evidence = None
+                return
+
+            if hasattr(obs, "browser"):
+                self._browser_name = getattr(obs, "browser", None)
+                self._browser_url = getattr(obs, "page_url", None)
+                self._browser_title = getattr(obs, "page_title", None)
+                self._browser_observed_at = getattr(obs, "observed_at", None)
+                self._browser_freshness = getattr(obs, "freshness", "CURRENT")
+                self._browser_status = getattr(obs, "status", "active")
+                self._browser_evidence = getattr(obs, "evidence", None)
+            elif isinstance(obs, dict):
+                self._browser_name = obs.get("browser") or obs.get("browser_name")
+                self._browser_url = obs.get("url") or obs.get("page_url")
+                self._browser_title = obs.get("title") or obs.get("page_title")
+                self._browser_observed_at = obs.get("observed_at")
+                self._browser_freshness = obs.get("freshness", "CURRENT")
+                self._browser_status = obs.get("status", "active")
+                self._browser_evidence = obs.get("evidence")
+
+    def update_desktop_observation(self, obs: Any) -> None:
+        """S16: Update active desktop context from WindowObservation/DesktopObservation or dict."""
+        with self._lock:
+            if obs is None:
+                self._desktop_observed_at = None
+                self._desktop_freshness = "UNKNOWN"
+                return
+
+            if hasattr(obs, "active_window") and obs.active_window:
+                win = obs.active_window
+                self._active_window_title = win.title
+                self._active_window_process = win.process_name
+                self._active_application = win.process_name
+                self._desktop_observed_at = obs.observed_at
+                self._desktop_freshness = "CURRENT" if getattr(obs, "is_available", True) else "UNKNOWN"
+            elif isinstance(obs, dict):
+                win = obs.get("active_window") or obs
+                self._active_window_title = win.get("title")
+                self._active_window_process = win.get("process_name")
+                self._active_application = win.get("process_name")
+                self._desktop_observed_at = obs.get("observed_at")
+                self._desktop_freshness = obs.get("freshness", "CURRENT")
+
     def get_browser_snapshot(self) -> Optional[dict]:
         '''Return point-in-time snapshot of active browser context, or None if not a browser.'''
         if not self._browser_name:
