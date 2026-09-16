@@ -23,3 +23,7 @@ data/
 # Local test artifact pollution
 Documents/
 
+
+# Local C++ test artifacts
+/addTwoNumbers.cpp
+/hello_world.cpp
