@@ -189,3 +189,101 @@ def _delegate_resolution(
         was_refreshed=was_refreshed,
         reason=getattr(target_res, "reason", f"Resolved via artifact context ({status_val})"),
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# S17 — Compound Intent & Cross-Device Resolution
+# ─────────────────────────────────────────────────────────────────────────────
+
+from agent.context.device import (
+    DeviceIdentity,
+    DeviceRegistry,
+    DeviceResolutionResult,
+    DeviceResolutionStatus,
+    resolve_device_reference,
+)
+
+
+@dataclass
+class CompoundResolutionResult:
+    """Outcome of resolving a multi-target intent (e.g. artifact + target device).
+    
+    Proves S16 (artifact) and S17 (device) compose deterministically.
+    """
+    artifact_result: Optional[ResolutionResult] = None
+    device_result: Optional[DeviceResolutionResult] = None
+    raw_input: str = ""
+
+    @property
+    def is_fully_resolved(self) -> bool:
+        art_ok = self.artifact_result is not None and self.artifact_result.status == "RESOLVED"
+        dev_ok = self.device_result is not None and self.device_result.is_resolved
+        return art_ok and dev_ok
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "artifact_result": {
+                "status": self.artifact_result.status,
+                "target": self.artifact_result.target,
+                "reference_type": self.artifact_result.reference_type,
+                "freshness": self.artifact_result.freshness,
+                "reason": self.artifact_result.reason,
+            } if self.artifact_result else None,
+            "device_result": self.device_result.to_dict() if self.device_result else None,
+            "raw_input": self.raw_input,
+            "is_fully_resolved": self.is_fully_resolved,
+        }
+
+
+def resolve_compound_intent(
+    text: str,
+    context: Any,
+    registry: Optional[DeviceRegistry] = None,
+    freshness_policy: Optional[Dict] = None,
+) -> CompoundResolutionResult:
+    """Deterministically resolves cross-device intents such as:
+    
+      'send this document to my laptop'
+      'transfer this file to office pc'
+      'send current page to the phone'
+    
+    Decomposes the intent into:
+      1. Artifact reference -> S16 resolve_context_reference()
+      2. Device reference   -> S17 resolve_device_reference()
+    
+    Does NOT initiate network transport (S18 boundary).
+    """
+    if not text or not text.strip():
+        return CompoundResolutionResult(
+            artifact_result=ResolutionResult(status="NOT_FOUND", reason="Empty intent text"),
+            device_result=DeviceResolutionResult(status=DeviceResolutionStatus.NOT_FOUND, reason="Empty intent text"),
+            raw_input=text or "",
+        )
+
+    import re
+    dev_reg = registry or getattr(context, "device_registry", None) or DeviceRegistry()
+
+    # Match pattern: <action> <artifact_phrase> to <device_phrase>
+    match = re.search(r"^(?:send|transfer|share|copy|push)\s+(.+?)\s+to\s+(.+)$", text.strip(), re.IGNORECASE)
+    if match:
+        art_ref_raw = match.group(1).strip()
+        dev_ref_raw = match.group(2).strip()
+
+        art_res = resolve_context_reference(art_ref_raw, context, freshness_policy=freshness_policy)
+        dev_res = resolve_device_reference(dev_ref_raw, dev_reg)
+
+        return CompoundResolutionResult(
+            artifact_result=art_res,
+            device_result=dev_res,
+            raw_input=text,
+        )
+
+    # Fallback if no preposition match
+    art_res = resolve_context_reference(text, context, freshness_policy=freshness_policy)
+    dev_res = resolve_device_reference(text, dev_reg)
+
+    return CompoundResolutionResult(
+        artifact_result=art_res,
+        device_result=dev_res,
+        raw_input=text,
+    )
