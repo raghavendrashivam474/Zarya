@@ -29,6 +29,10 @@ from .artifacts import active_context, resolve_target, PRONOUN_REFERENCES, Resol
 from agent.context.resolver import resolve_context_reference
 from agent.context.references import classify_reference, CanonicalReference
 
+# S18: Long-running work lifecycle (optional, backward-compatible)
+from .lifecycle import WorkState, LifecycleStatus, StepRecord
+from .checkpoint import CheckpointStore
+
 # Ensure tools are loaded when work executor is imported
 load_all()
 
@@ -216,6 +220,8 @@ def execute_work(
     step_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     adaptive: bool = False,
     context: Optional[Any] = None,
+    work_state: Optional[WorkState] = None,
+    checkpoint_store: Optional[CheckpointStore] = None,
 ) -> Dict[str, Any]:
     """Execute a validated WorkPlan sequentially with S12 context continuity."""
     is_valid, validation_reason = validate_plan(plan)
@@ -246,11 +252,34 @@ def execute_work(
     failed_step_info: Optional[Dict[str, Any]] = None
     execution_queue: List[Dict[str, Any]] = list(initial_steps)
 
+    # S18: Seed completed steps and slice execution queue if resuming from checkpoint
+    if work_state is not None and work_state.checkpoint_step > 0:
+        log.info("S18 Resume: Seeding %d completed steps and skipping to step %d", 
+                 work_state.checkpoint_step, work_state.checkpoint_step)
+        for s in work_state.completed_steps[:work_state.checkpoint_step]:
+            completed_steps.append({
+                "step_id": s.step_id,
+                "tool": s.tool,
+                "status": s.outcome,
+                "verification": s.evidence.get("verification"),
+                "state": s.evidence.get("state"),
+                "failure": s.evidence.get("failure"),
+                "recovery": s.evidence.get("recovery"),
+            })
+        execution_queue = execution_queue[work_state.checkpoint_step:]
+
     overall_status = OUTCOME_VERIFIED_SUCCESS
     summary_message = "All steps completed and verified successfully."
 
     adaptation_round = 0
     adaptations_log: List[Dict[str, Any]] = []
+
+    # S18: Initialize lifecycle tracking
+    if work_state is not None:
+        if work_state.status != LifecycleStatus.RUNNING:
+            work_state.transition_to(LifecycleStatus.RUNNING, "execution started")
+        if checkpoint_store is not None:
+            checkpoint_store.save(work_state)
 
     while execution_queue:
         if len(completed_steps) >= MAX_STEPS:
@@ -302,6 +331,12 @@ def execute_work(
                 },
                 "recovery": {"status": "NOT_ATTEMPTED", "reason": "Execution crash bypasses recovery."},
             }
+            # S18: Mark interrupted on crash
+            if work_state is not None:
+                work_state.interruption_info = {"step_id": step_id, "error": str(exc)}
+                work_state.transition_to(LifecycleStatus.INTERRUPTED, f"crash at {step_id}")
+                if checkpoint_store is not None:
+                    checkpoint_store.save(work_state)
             break
 
         # Step 4: Evaluate outcome
@@ -325,6 +360,30 @@ def execute_work(
             recorded_step["target"] = response["target"]
 
         completed_steps.append(recorded_step)
+
+        # S18: Record step in lifecycle state and checkpoint
+        if work_state is not None:
+            sr = StepRecord(
+                step_index=len(completed_steps) - 1,
+                step_id=step_id,
+                tool=tool_name,
+                outcome=step_status,
+                evidence={"verification": response.get("verification")},
+            )
+            work_state.record_step(sr)
+            if step_status in (STEP_SUCCESS, STEP_RECOVERED):
+                work_state.record_checkpoint()
+                if checkpoint_store is not None:
+                    checkpoint_store.save(work_state)
+            # Check for cooperative pause/cancel signal
+            if work_state.status in (LifecycleStatus.PAUSED, LifecycleStatus.CANCELLING):
+                if work_state.status == LifecycleStatus.CANCELLING:
+                    work_state.transition_to(LifecycleStatus.CANCELLED, "cancelled during execution")
+                if checkpoint_store is not None:
+                    checkpoint_store.save(work_state)
+                overall_status = OUTCOME_INCOMPLETE
+                summary_message = f"Work {work_state.status.value.lower()} at step '{step_id}'."
+                break
 
         event_state = "VERIFIED_SUCCESS" if step_status in (STEP_SUCCESS, STEP_RECOVERED) else (
             "UNKNOWN" if step_status == STEP_UNKNOWN else "VERIFIED_FAILURE"
@@ -379,6 +438,19 @@ def execute_work(
 
             failed_step_info = recorded_step
             break
+
+    # S18: Finalize lifecycle state
+    if work_state is not None:
+        if overall_status == OUTCOME_VERIFIED_SUCCESS:
+            work_state.transition_to(LifecycleStatus.COMPLETED, "all steps verified")
+        elif overall_status == OUTCOME_UNKNOWN:
+            work_state.transition_to(LifecycleStatus.UNKNOWN, "outcome unknown")
+        elif overall_status == OUTCOME_VERIFIED_FAILURE:
+            work_state.transition_to(LifecycleStatus.FAILED, "verification failed")
+        elif work_state.status not in (LifecycleStatus.PAUSED, LifecycleStatus.CANCELLED, LifecycleStatus.INTERRUPTED):
+            work_state.transition_to(LifecycleStatus.INTERRUPTED, summary_message)
+        if checkpoint_store is not None:
+            checkpoint_store.save(work_state)
 
     skipped_steps = [s["id"] for s in execution_queue]
 
