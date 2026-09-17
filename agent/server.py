@@ -27,6 +27,13 @@ from pydantic import BaseModel
 
 from . import __version__
 from .registry import DESKTOP_TOOL_NAMES, TOOLS, ToolError, load_all
+from .checkpoint import CheckpointStore, default_checkpoint_db_path
+from .lifecycle import LifecycleStatus, WorkState, create_operation
+from .resume import resume_work
+from .control import request_pause, request_cancel, get_operation_status
+
+# S18 Checkpoint Store singleton
+_checkpoint_store = CheckpointStore()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +50,7 @@ log.info("Loaded %d desktop tools: %s", len(TOOLS), ", ".join(sorted(TOOLS)))
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("Zarya Desktop Control Agent v%s starting up.", __version__)
+    _checkpoint_store.open()
     yield
     try:
         from .tools.browser import shutdown_browser
@@ -239,3 +247,72 @@ async def interact_persona(request: Request):
             "raw_intent_dict": None,
         }
 
+
+
+# ---------------------------------------------------------------------------
+# S18 Long-Running & Recoverable Work Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/work/status/{operation_id}")
+async def get_work_status(operation_id: str):
+    """Retrieve durable status and checkpoint info for an operation."""
+    state = get_operation_status(operation_id, _checkpoint_store)
+    if not state:
+        return {"error": f"Operation '{operation_id}' not found", "status": "NOT_FOUND"}
+    return state
+
+
+@app.get("/work/resumable")
+async def list_resumable_work():
+    """List all operations currently in a resumable state."""
+    ops = _checkpoint_store.list_resumable()
+    return {"resumable_operations": [op.to_dict() for op in ops], "count": len(ops)}
+
+
+@app.post("/work/resume")
+async def resume_operation(request: Request):
+    """Safely resume a checkpointed operation with reality verification."""
+    body = await request.json()
+    operation_id = body.get("operation_id")
+    authorized = bool(body.get("authorized", False))
+    adaptive = bool(body.get("adaptive", False))
+    callback_url = body.get("callback_url")
+
+    if not operation_id:
+        return {"error": "Missing 'operation_id' in resume request.", "status": "INCOMPLETE"}
+
+    cb = make_http_step_callback(callback_url, operation_id) if callback_url else None
+    result = resume_work(
+        operation_id=operation_id,
+        checkpoint_store=_checkpoint_store,
+        authorized=authorized,
+        step_callback=cb,
+        adaptive=adaptive,
+    )
+    return result
+
+
+@app.post("/work/pause")
+async def pause_operation(request: Request):
+    """Request cooperative pause on an active operation."""
+    body = await request.json()
+    operation_id = body.get("operation_id")
+    reason = body.get("reason", "User requested pause via API")
+
+    if not operation_id:
+        return {"error": "Missing 'operation_id'", "success": False}
+
+    return request_pause(operation_id, _checkpoint_store, reason=reason)
+
+
+@app.post("/work/cancel")
+async def cancel_operation(request: Request):
+    """Request cooperative cancellation on an active operation."""
+    body = await request.json()
+    operation_id = body.get("operation_id")
+    reason = body.get("reason", "User requested cancellation via API")
+
+    if not operation_id:
+        return {"error": "Missing 'operation_id'", "success": False}
+
+    return request_cancel(operation_id, _checkpoint_store, reason=reason)
