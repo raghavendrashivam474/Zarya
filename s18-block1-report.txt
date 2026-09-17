@@ -1,0 +1,382 @@
+﻿=== S18 BLOCK 1 REPORT ===
+Generated: 09/17/2026 09:51:16
+
+REPO ROOT: C:\Users\ragha\Documents\Anti-grav\Zarya — EXISTS
+
+Mode   Name                                   
+----   ----                                   
+d----- .pytest_cache                          
+d----- .venv                                  
+d----- agent                                  
+d----- assets                                 
+d----- data                                   
+d----- Desktop                                
+d----- dist                                   
+d----- docs                                   
+d----- Documents                              
+d----- logs                                   
+d----- node_modules                           
+d----- public                                 
+d----- scripts                                
+d----- server                                 
+d----- src                                    
+d----- tests                                  
+-a---- .env                                   
+-a---- .env.example                           
+-a---- .env.local                             
+-a---- .gitignore                             
+-a---- addTwoNumbers.cpp                      
+-a---- CONTRIBUTING.md                        
+-a---- hello_world.cpp                        
+-a---- index.html                             
+-a---- memories.json                          
+-a---- package-lock.json                      
+-a---- package.json                           
+-a---- README.md                              
+-a---- S15-Architecture-Report.md             
+-a---- S15-Handoff-Suite.ps1                  
+-a---- s18-block1-report.txt                  
+-a---- settings.json                          
+-a---- start_zarya.bat                        
+-a---- start_zarya.sh                         
+-a---- tsconfig.json                          
+-a---- vite.config.ts                         
+-a---- ZARYA.md                               
+d----- v                                      
+-a---- .gitignore                             
+-a---- CACHEDIR.TAG                           
+-a---- README.md                              
+d----- Include                                
+d----- Lib                                    
+d----- Scripts                                
+-a---- .gitignore                             
+-a---- pyvenv.cfg                             
+d----- backends                               
+d----- context                                
+d----- data                                   
+d----- tools                                  
+d----- __pycache__                            
+-a---- adaptive_work.py                       
+-a---- artifacts.py                           
+-a---- context.py                             
+-a---- failure.py                             
+-a---- intent.py                              
+-a---- persona.py                             
+-a---- README.md                              
+-a---- recovery.py                            
+-a---- registry.py                            
+-a---- requirements.txt                       
+-a---- server.py                              
+-a---- state.py                               
+-a---- test_intent.py                         
+-a---- test_persona.py                        
+-a---- work.py                                
+-a---- __init__.py                            
+d----- shefali                                
+-a---- chatgpt.png                            
+-a---- frame.jpg                              
+d----- logs                                   
+-a---- memories.json                          
+-a---- reminders.json                         
+-a---- settings.json                          
+d----- Zarya                                  
+-a---- Angular_Project_Ideas.txt              
+-a---- Chat_App_Plan.txt                      
+-a---- DatabaseScalingOverview.txt            
+-a---- document.txt                           
+-a---- Game_Samrat_Brief.txt                  
+-a---- NewDocument.txt                        
+-a---- new_document.txt                       
+-a---- This is sorandom tet. i a adding th.txt
+-a---- time_management_MOM.txt                
+d----- assets                                 
+-a---- index.html                             
+-a---- server.cjs                             
+-a---- server.cjs.map                         
+d----- adr                                    
+d----- architecture                           
+d----- baseline                               
+d----- decisions                              
+d----- development                            
+d----- inventory                              
+d----- milestones                             
+d----- reports                                
+d----- research                               
+-a---- s16-context-map.json                   
+d----- Anti-grav                              
+-a---- commands.log                           
+-a---- errors.log                             
+-a---- startup.log                            
+d----- .bin                                   
+d----- .vite                                  
+d----- .vite-temp                             
+d----- @babel                                 
+d----- @esbuild                               
+d----- @google                                
+d----- @jridgewell                            
+d----- @protobufjs                            
+d----- @rolldown                              
+d----- @rollup                                
+d----- @tailwindcss                           
+d----- @types                                 
+d----- @vitejs                                
+d----- accepts                                
+d----- agent-base                             
+d----- array-flatten                          
+d----- autoprefixer                           
+d----- base64-js                              
+d----- baseline-browser-mapping               
+d----- bignumber.js                           
+d----- body-parser                            
+d----- browserslist                           
+d----- buffer-equal-constant-time             
+d----- bytes                                  
+d----- call-bind-apply-helpers                
+d----- call-bound                             
+d----- caniuse-lite                           
+d----- content-disposition                    
+d----- content-type                           
+d----- convert-source-map                     
+d----- cookie                                 
+d----- cookie-signature                       
+d----- data-uri-to-buffer                     
+d----- debug                                  
+d----- depd                                   
+d----- destroy                                
+d----- detect-libc                            
+d----- dotenv                                 
+d----- dunder-proto                           
+d----- ecdsa-sig-formatter                    
+d----- ee-first                               
+d----- electron-to-chromium                   
+d----- encodeurl                              
+d----- enhanced-resolve                       
+d----- es-define-property                     
+d----- es-errors                              
+d----- es-object-atoms                        
+d----- esbuild                                
+d----- escalade                               
+d----- escape-html                            
+d----- etag                                   
+d----- express                                
+d----- extend                                 
+d----- fdir                                   
+d----- fetch-blob                             
+d----- finalhandler                           
+d----- formdata-polyfill                      
+d----- forwarded                              
+d----- fraction.js                            
+d----- framer-motion                          
+d----- fresh                                  
+d----- function-bind                          
+d----- gaxios                                 
+d----- gcp-metadata                           
+d----- gensync                                
+d----- get-intrinsic                          
+d----- get-proto                              
+d----- google-auth-library                    
+d----- google-logging-utils                   
+d----- gopd                                   
+d----- graceful-fs                            
+d----- has-symbols                            
+d----- hasown                                 
+d----- http-errors                            
+d----- https-proxy-agent                      
+d----- iconv-lite                             
+d----- inherits                               
+d----- ipaddr.js                              
+d----- jiti                                   
+d----- js-tokens                              
+d----- jsesc                                  
+d----- json-bigint                            
+d----- json5                                  
+d----- jwa                                    
+d----- jws                                    
+d----- lightningcss                           
+d----- lightningcss-win32-x64-msvc            
+d----- long                                   
+d----- lru-cache                              
+d----- lucide-react                           
+d----- magic-string                           
+d----- math-intrinsics                        
+d----- media-typer                            
+d----- merge-descriptors                      
+d----- methods                                
+d----- mime                                   
+d----- mime-db                                
+d----- mime-types                             
+d----- motion                                 
+d----- motion-dom                             
+d----- motion-utils                           
+d----- ms                                     
+d----- nanoid                                 
+d----- negotiator                             
+d----- node-domexception                      
+d----- node-fetch                             
+d----- node-releases                          
+d----- object-inspect                         
+d----- on-finished                            
+d----- p-retry                                
+d----- parseurl                               
+d----- path-to-regexp                         
+d----- picocolors                             
+d----- picomatch                              
+d----- postcss                                
+d----- postcss-value-parser                   
+d----- protobufjs                             
+d----- proxy-addr                             
+d----- qs                                     
+d----- range-parser                           
+d----- raw-body                               
+d----- react                                  
+d----- react-dom                              
+d----- react-refresh                          
+d----- retry                                  
+d----- rollup                                 
+d----- safe-buffer                            
+d----- safer-buffer                           
+d----- scheduler                              
+d----- semver                                 
+d----- send                                   
+d----- serve-static                           
+d----- setprototypeof                         
+d----- side-channel                           
+d----- side-channel-list                      
+d----- side-channel-map                       
+d----- side-channel-weakmap                   
+d----- source-map-js                          
+d----- statuses                               
+d----- tailwindcss                            
+d----- tapable                                
+d----- tinyglobby                             
+d----- toidentifier                           
+d----- tslib                                  
+d----- tsx                                    
+d----- type-is                                
+d----- typescript                             
+d----- undici-types                           
+d----- unpipe                                 
+d----- update-browserslist-db                 
+d----- utils-merge                            
+d----- vary                                   
+d----- vite                                   
+d----- web-streams-polyfill                   
+d----- ws                                     
+d----- yallist                                
+-a---- .package-lock.json                     
+d----- assets                                 
+-a---- run_agent.py                           
+-a---- smoke_s12_1_desktop.py                 
+-a---- start_zarya.bat                        
+-a---- start_zarya.sh                         
+-a---- index.ts                               
+-a---- memory.ts                              
+-a---- paths.ts                               
+-a---- reminders.ts                           
+d----- components                             
+d----- lib                                    
+-a---- App.tsx                                
+-a---- index.css                              
+-a---- main.tsx                               
+d----- baseline                               
+d----- __pycache__                            
+-a---- test_browser_runtime.py                
+-a---- test_runtime_event_bridge.py           
+-a---- test_s10_adaptive_work.py              
+-a---- test_s10_integration.py                
+-a---- test_s11_integration.py                
+-a---- test_s11_step_events.py                
+-a---- test_s12_1_hardening.py                
+-a---- test_s12_artifact_identity.py          
+-a---- test_s13_active_computer_context.py    
+-a---- test_s14_browser_context.py            
+-a---- test_s16_boundary.py                   
+-a---- test_s16_golden.py                     
+-a---- test_s16_resolver.py                   
+-a---- test_s17_device.py                     
+-a---- test_s1_verification.py                
+-a---- test_s2_verification.py                
+-a---- test_s3_integration.py                 
+-a---- test_s3_state_model.py                 
+-a---- test_s4_failure_reasoning.py           
+-a---- test_s4_integration.py                 
+-a---- test_s5_integration.py                 
+-a---- test_s5_recovery.py                    
+-a---- test_s6_integration.py                 
+-a---- test_s6_work.py                        
+-a---- test_s7_context.py                     
+-a---- test_s9_persona.py                     
+
+
+
+--- TIER 1 FILES ---
+FILE: agent\work.py  (414 lines)
+  Classes: 
+  Functions: def _interpolate_step_args(, def validate_plan(plan: Dict[str, Any]) -> Tuple[bool, str]:, def _evaluate_step_outcome(response: Dict[str, Any], unverified_ok: bool) -> tuple[str, str]:, def _emit_step_event(, def execute_work(
+FILE: agent\recovery.py  (322 lines)
+  Classes: 
+  Functions: def is_recovery_in_progress() -> bool:, def check_eligibility(, def check_authorization(, def _perform_recovery_action(, def _build_result(, def attempt_recovery(
+FILE: agent\failure.py  (326 lines)
+  Classes: 
+  Functions: def _cap_confidence(base: str, freshness: str) -> str:, def _build(, def _reason_application(, def _reason_filesystem(, def _reason_terminal(, def _reason_insufficient(, def reason_about_failure(
+FILE: agent\state.py  (321 lines)
+  Classes: class StateFreshness(str, Enum):, class StateDomain(str, Enum):, class StateObservation:, class StateCache:
+  Functions: def to_dict(self) -> Dict[str, Any]:, def from_verification(, def now_iso() -> str:, def assess_freshness(, def refresh_observation_freshness(, def _extract_state(domain: str, verification: Dict[str, Any]) -> Dict[str, Any]:, def __init__(self) -> None:, def _key(self, domain: str, subject: str) -> str:, def record(self, observation: StateObservation) -> None:, def get(, def get_all(, def clear(self) -> None:, def to_dict(self) -> Dict[str, Any]:
+FILE: agent\context.py  (750 lines)
+  Classes: class MemoryType(str):, class StoreStatus(str):, class MemoryRecord:, class MemoryStore:, class MemoryPolicy:
+  Functions: def to_dict(self) -> Dict[str, Any]:, def freshness(self, max_age_seconds: float = 30.0) -> str:, def as_historical_context(, def default_store_path() -> Path:, def __init__(self, path: Optional[Path] = None) -> None:, def open(self) -> bool:, def close(self) -> None:, def last_error(self) -> Optional[str]:, def _require_conn(self) -> Optional[sqlite3.Connection]:, def remember(self, record: MemoryRecord) -> Optional[str]:, def recall(, def get(self, memory_id: str) -> Optional[MemoryRecord]:, def count(self) -> int:, def reset(self) -> bool:, def _row_to_record(row: sqlite3.Row) -> MemoryRecord:, def classify_observation(, def _new_id(prefix: str) -> str:, def build_observation_record(, def build_work_outcome_record(work_result: Dict[str, Any]) -> MemoryRecord:, def build_step_outcome_record(, def capture_observation(, def capture_work_result(
+--- TIER 2 FILES ---
+FILE: agent\artifacts.py  (790 lines)
+  Classes: class ArtifactType(str, enum.Enum):, class ResolutionStatus(str, enum.Enum):, class ArtifactIdentity:, class TargetResolution:, class ActiveComputerContext:
+  Functions: def _now_iso() -> str:, def canonicalize_locator(locator: str, artifact_type: str = "file") -> str:, def to_dict(self) -> Dict[str, Any]:, def from_dict(cls, data: Dict[str, Any]) -> ArtifactIdentity:, def create_file_artifact(, def create_application_artifact(, def is_resolved(self) -> bool:, def __init__(self) -> None:, def clear(self) -> None:, def active_artifact(self) -> Optional[ArtifactIdentity]:, def last_created_artifact(self) -> Optional[ArtifactIdentity]:, def last_verified_artifact(self) -> Optional[ArtifactIdentity]:, def active_application(self) -> Optional[str]:, def active_window_title(self) -> Optional[str]:, def active_window_process(self) -> Optional[str]:, def desktop_freshness(self) -> str:, def browser_name(self) -> Optional[str]:, def browser_url(self) -> Optional[str]:, def browser_title(self) -> Optional[str]:, def browser_freshness(self) -> str:, def browser_status(self) -> str:, def update_browser_observation(self, obs: Any) -> None:, def update_desktop_observation(self, obs: Any) -> None:, def get_browser_snapshot(self) -> Optional[dict]:, def record_artifact(, def reset(self) -> None:, def update_from_tool_response(, def observe_desktop(self) -> dict:, def get_desktop_snapshot(self) -> dict:, def match_artifact_to_window(self, window_title: Optional[str] = None) -> Optional[ArtifactIdentity]:, def resolve_target(self, reference: str) -> TargetResolution:, def resolve_target(reference: str, context: Optional[ActiveComputerContext] = None) -> TargetResolution:
+FILE: agent\intent.py  (591 lines)
+  Classes: class S8Step:, class S8WorkPlan:, class IntentInterpreter:, class PlanValidator:, class ResponseTranslator:
+  Functions: def to_s6_plan(self) -> Dict[str, Any]:, def __init__(, def interpret(self, user_input: str) -> S8WorkPlan:, def validate(plan: S8WorkPlan, allowed_tools: Optional[List[str]] = None) -> Tuple[bool, str]:, def translate(work_result: Dict[str, Any], raw_intent: str = "") -> str:, def process_natural_intent(
+FILE: agent\server.py  (241 lines)
+  Classes: class ExecuteRequest(BaseModel):, class ExecuteResponse(BaseModel):
+  Functions: def make_http_step_callback(callback_url: str, operation_id: str):, def _cb(event: dict) -> None:, def main() -> None:, def describe_persona():
+FILE: server\index.ts  (1974 lines)
+  Classes: 
+  Functions: 
+--- PERSISTENCE ---
+context.py:34: import sqlite3
+context.py:174: Windows: %LOCALAPPDATA%\\Zarya\\s7_context.db
+context.py:175: Other:   ~/.local/share/zarya/s7_context.db
+context.py:182: return Path(base) / "Zarya" / "s7_context.db"
+context.py:183: return Path.home() / "AppData" / "Local" / "Zarya" / "s7_context.db"
+context.py:186: return Path(xdg) / "zarya" / "s7_context.db"
+context.py:187: return Path.home() / ".local" / "share" / "zarya" / "s7_context.db"
+context.py:235: # MemoryStore — persistent SQLite-backed store
+context.py:239: """SQLite-backed persistent store for MemoryRecord instances.
+context.py:251: self._conn: Optional[sqlite3.Connection] = None
+context.py:269: conn = sqlite3.connect(
+context.py:274: conn.row_factory = sqlite3.Row
+context.py:288: except (sqlite3.Error, OSError) as exc:
+context.py:301: except sqlite3.Error:
+context.py:310: def _require_conn(self) -> Optional[sqlite3.Connection]:
+context.py:350: json.dumps(record.payload, default=str),
+context.py:351: json.dumps(record.provenance, default=str),
+context.py:357: except (sqlite3.Error, TypeError, ValueError) as exc:
+context.py:420: except sqlite3.Error as exc:
+context.py:439: except sqlite3.Error as exc:
+context.py:454: except sqlite3.Error:
+context.py:469: except sqlite3.Error as exc:
+context.py:478: def _row_to_record(row: sqlite3.Row) -> MemoryRecord:
+context.py:487: payload=json.loads(row["payload_json"]),
+context.py:488: provenance=json.loads(row["provenance_json"]),
+server.py:117: data = json.dumps(payload).encode("utf-8")
+--- EXISTING S18 REFERENCES ---
+artifacts.py:420: """Explicit lifecycle reset for session boundaries or test isolation."""
+context.py:256: # ---- Lifecycle -----------------------------------------------------
+--- DOCS ---
+--- RUNTIME EVENTS ---
+  L100: """Create a failure-isolated HTTP callback that posts step events to Node bridge."""
+  L101: def _cb(event: dict) -> None:
+  L106: "event": event.get("event"),
+  L107: "state": event.get("state"),
+  L108: "tool": event.get("tool"),
+  L111: "step_id": event.get("step_id"),
+  L112: "step_index": event.get("step_index"),
+  L113: "total_steps": event.get("total_steps"),
+  L114: **event.get("payload", {}),
+  L127: log.warning("Failed to dispatch step event to %s: %s", callback_url, exc)
