@@ -32,6 +32,11 @@ from .lifecycle import LifecycleStatus, WorkState, create_operation
 from .resume import resume_work
 from .control import request_pause, request_cancel, get_operation_status
 
+# EIP-1: Ecosystem Integration Boundary
+from agent.ecosystem.routes import router as ecosystem_router
+from agent.ecosystem.authorization import get_token as get_ecosystem_token
+from agent.ecosystem.protocol import PROTOCOL_VERSION as EIP_PROTOCOL_VERSION
+
 # S18 Checkpoint Store singleton
 _checkpoint_store = CheckpointStore()
 
@@ -67,6 +72,9 @@ app = FastAPI(
     description="Verified desktop automation runtime for Zarya.",
     lifespan=lifespan,
 )
+
+# EIP-1: Mount ecosystem integration boundary
+app.include_router(ecosystem_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -167,6 +175,7 @@ def main() -> None:
     host = os.environ.get("ZARYA_AGENT_HOST", os.environ.get("ELYSIA_AGENT_HOST", "127.0.0.1"))
     port = int(os.environ.get("ZARYA_AGENT_PORT", os.environ.get("ELYSIA_AGENT_PORT", "8765")))
     log.info("Launching uvicorn on %s:%d", host, port)
+    log.info("EIP-1 ecosystem boundary active: protocol=%s, token=%s", EIP_PROTOCOL_VERSION, get_ecosystem_token())
     uvicorn.run(
         "agent.server:app",
         host=host,
