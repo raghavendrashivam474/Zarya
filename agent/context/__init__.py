@@ -1,10 +1,11 @@
-"""Zarya Context Package (S7 Memory + S16 Unified Context + S17 Device Fabric + N1 Unified Work Context).
+﻿"""Zarya Context Package (S7 Memory + S16 Unified Context + S17 Device Fabric + N1 Unified Work Context + N2 Semantic Work Context).
 
 Provides unified access to:
   - S7 Persistent Memory & Episodic Store (MemoryStore, MemoryRecord, etc.)
   - S16 Unified Context Resolution (CanonicalReference, FreshnessState, resolve_context_reference, ResolutionResult)
-  - S17 Logical Device Identity & Local Device Fabric (DeviceIdentity, DeviceRegistry, resolve_device_reference, CompoundResolutionResult)
+  - S17 Logical Device Identity & Local Device Fabric (DeviceIdentity, DeviceRegistry, resolve_device_reference, CompoundResolutionResult)      
   - N1 Unified Work & Computer Context Snapshot (UnifiedContext, capture_unified_context, adapters)
+  - N2 Semantic Work Context & State Model (RelevantWorkContext, SemanticWorkModel, derive_semantic_work)
 """
 
 import importlib.util
@@ -68,6 +69,13 @@ from agent.context.adapters import (
     adapt_active_computer_context,
 )
 
+# ── N2 Semantic Work Context & State Model ──
+from agent.context.work_model import (
+    RelevantWorkContext,
+    SemanticWorkModel,
+    derive_semantic_work,
+)
+
 __all__ = [
     # S16
     "CanonicalReference",
@@ -103,4 +111,8 @@ __all__ = [
     "adapt_artifact_identity",
     "adapt_work_state",
     "adapt_active_computer_context",
+    # N2
+    "RelevantWorkContext",
+    "SemanticWorkModel",
+    "derive_semantic_work",
 ]
