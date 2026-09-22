@@ -1,9 +1,10 @@
-"""Zarya Context Package (S7 Memory + S16 Unified Context + S17 Device Fabric).
+"""Zarya Context Package (S7 Memory + S16 Unified Context + S17 Device Fabric + N1 Unified Work Context).
 
 Provides unified access to:
   - S7 Persistent Memory & Episodic Store (MemoryStore, MemoryRecord, etc.)
   - S16 Unified Context Resolution (CanonicalReference, FreshnessState, resolve_context_reference, ResolutionResult)
   - S17 Logical Device Identity & Local Device Fabric (DeviceIdentity, DeviceRegistry, resolve_device_reference, CompoundResolutionResult)
+  - N1 Unified Work & Computer Context Snapshot (UnifiedContext, capture_unified_context, adapters)
 """
 
 import importlib.util
@@ -45,3 +46,61 @@ from agent.context.device import (
     DeviceResolutionResult,
     resolve_device_reference,
 )
+
+# ── N1 Unified Work & Computer Context ──
+from agent.context.unified import (
+    UnifiedContext,
+    DeviceContext,
+    ComputerContext,
+    BrowserContext,
+    ArtifactReference,
+    WorkReference,
+    ContextObservation,
+    ObservationProvenance,
+)
+from agent.context.capture import capture_unified_context
+from agent.context.adapters import (
+    adapt_device_identity,
+    adapt_window_observation,
+    adapt_browser_observation,
+    adapt_artifact_identity,
+    adapt_work_state,
+    adapt_active_computer_context,
+)
+
+__all__ = [
+    # S16
+    "CanonicalReference",
+    "classify_reference",
+    "FreshnessState",
+    "check_freshness",
+    "resolve_context_reference",
+    "ResolutionResult",
+    "CompoundResolutionResult",
+    "resolve_compound_intent",
+    # S17
+    "DeviceIdentity",
+    "DeviceRegistry",
+    "DeviceType",
+    "Platform",
+    "TrustState",
+    "DeviceResolutionStatus",
+    "DeviceResolutionResult",
+    "resolve_device_reference",
+    # N1
+    "UnifiedContext",
+    "DeviceContext",
+    "ComputerContext",
+    "BrowserContext",
+    "ArtifactReference",
+    "WorkReference",
+    "ContextObservation",
+    "ObservationProvenance",
+    "capture_unified_context",
+    "adapt_device_identity",
+    "adapt_window_observation",
+    "adapt_browser_observation",
+    "adapt_artifact_identity",
+    "adapt_work_state",
+    "adapt_active_computer_context",
+]
