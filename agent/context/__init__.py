@@ -1,11 +1,12 @@
-﻿"""Zarya Context Package (S7 Memory + S16 Unified Context + S17 Device Fabric + N1 Unified Work Context + N2 Semantic Work Context).
+"""Zarya Context Package (S7 Memory + S16 Unified Context + S17 Device Fabric + N1 Unified Work Context + N2 Semantic Work Context + N3 Portable Work Representation).
 
 Provides unified access to:
   - S7 Persistent Memory & Episodic Store (MemoryStore, MemoryRecord, etc.)
   - S16 Unified Context Resolution (CanonicalReference, FreshnessState, resolve_context_reference, ResolutionResult)
-  - S17 Logical Device Identity & Local Device Fabric (DeviceIdentity, DeviceRegistry, resolve_device_reference, CompoundResolutionResult)      
+  - S17 Logical Device Identity & Local Device Fabric (DeviceIdentity, DeviceRegistry, resolve_device_reference, CompoundResolutionResult)
   - N1 Unified Work & Computer Context Snapshot (UnifiedContext, capture_unified_context, adapters)
   - N2 Semantic Work Context & State Model (RelevantWorkContext, SemanticWorkModel, derive_semantic_work)
+  - N3 Portable Work Representation (PortableWork, make_portable, PORTABLE_WORK_FORMAT_VERSION)
 """
 
 import importlib.util
@@ -76,6 +77,13 @@ from agent.context.work_model import (
     derive_semantic_work,
 )
 
+# ── N3 Portable Work Representation ──
+from agent.context.portable_work import (
+    PortableWork,
+    make_portable,
+    PORTABLE_WORK_FORMAT_VERSION,
+)
+
 __all__ = [
     # S16
     "CanonicalReference",
@@ -115,4 +123,8 @@ __all__ = [
     "RelevantWorkContext",
     "SemanticWorkModel",
     "derive_semantic_work",
+    # N3
+    "PortableWork",
+    "make_portable",
+    "PORTABLE_WORK_FORMAT_VERSION",
 ]
