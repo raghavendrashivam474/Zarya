@@ -1,25 +1,58 @@
-# N4 — Portable Work Continuation Bridge
-# Phase: N | Sprint: N4
-# Baseline: N3 v1.3.0-n3 (frozen)
-#
-# Responsibility:
-#   Expose the primary entry point for target-side continuation of
-#   safe PortableWork representations.
+﻿# N5 — Cross-Device Work Continuity & Handoff Lifecycle Bridge
+# Phase: N | Sprint: N5
+# Baseline: v1.4.0-n4
 
-import logging
 import json
+import logging
 from typing import Any, Dict, Optional, Union
 
-log = logging.getLogger("zarya.n4")
+log = logging.getLogger("zarya.continuity")
 
+# ── N4 Target Continuation Layer ──
 from agent.continuity.result import ContinuationResult, ContinuationStage, ContinuationStatus
-from agent.continuity.validation import validate_portable_work, ValidationVerdict
+from agent.continuity.validation import validate_portable_work, validate_portable_json, ValidationVerdict
 from agent.continuity.resolution import resolve_target_capabilities, resolve_target_artifacts
-from agent.continuity.reconstruction import authorize_continuation, reconstruct_executable_work
+from agent.continuity.reconstruction import authorize_continuation, reconstruct_executable_work, ReconstructedWork
 from agent.continuity.execution import handoff_to_s18
 
-__version__ = "0.1.0-n4"
-__phase__ = "N4"
+# ── N5 Cross-Device Continuity & Handoff Layer ──
+from agent.continuity.identity import (
+    generate_continuity_id,
+    ContinuityOperation,
+)
+from agent.continuity.state import (
+    ContinuityState,
+    is_terminal,
+    is_recoverable,
+    is_success,
+    derive_from_n4_status,
+    derive_from_s18_status,
+)
+from agent.continuity.handoff import (
+    HandoffRequest,
+    HandoffSession,
+    RecoveryPolicy,
+    RecoveryAction,
+)
+from agent.continuity.coordination import (
+    ContinuityTransferRequest,
+    TransportResult,
+    FluxTransportProvider,
+    DefaultTransportAdapter,
+    ContinuityCoordinator,
+)
+from agent.continuity.reconciliation import (
+    ContinuityReconciler,
+    ContinuityReconciliationReport,
+)
+from agent.continuity.persistence import (
+    ContinuityRecord,
+    ContinuityStore,
+)
+
+__version__ = "0.2.0-n5"
+__phase__ = "N5"
+
 
 def continue_portable_work(
     portable_work: Union[dict, str, Any],
@@ -30,32 +63,15 @@ def continue_portable_work(
     checkpoint_store_instance: Optional[Any] = None,
     artifact_registry: Optional[Any] = None,
 ) -> ContinuationResult:
-    """The formal target-side continuation contract.
-
-    Orchestrates the N4 pipeline end-to-end:
-      Validate -> Capability Check -> Resolve Artifacts -> Authorize -> Reconstruct -> Execute
-
-    Args:
-        portable_work: Deserialized dict, JSON string, or a physical N3 PortableWork instance.
-        authorization_token: Optional security token (EIP-1).
-        local_policy_override: Set to True to override token-validation gates.
-        checkpoint_store_path: Path to target S18 Checkpoint SQLite DB.
-        checkpoint_store_instance: Direct active instance of S18 CheckpointStore.
-        artifact_registry: Optional direct active reference to S12 artifact registry.
-
-    Returns:
-        A ContinuationResult detailing the stage, status, and execution outcomes.
-    """
+    """The formal target-side continuation contract."""
     log.info("N4 Continuation Request Initiated.")
 
-    # ── Step 1: Normalize & Validate Input (VALIDATE Stage) ──
+    # Step 1: Normalize & Validate Input
     work_dict: Dict[str, Any] = {}
-    
     if isinstance(portable_work, str):
         try:
             work_dict = json.loads(portable_work)
         except json.JSONDecodeError as e:
-            log.error("N4 Validation Failed: Input string is not valid JSON. Error: %s", e)
             return ContinuationResult(
                 work_id="unknown",
                 operation_id="unknown",
@@ -66,11 +82,9 @@ def continue_portable_work(
     elif isinstance(portable_work, dict):
         work_dict = portable_work
     elif hasattr(portable_work, "to_portable_dict"):
-        # Explicit N3 instance support
         try:
             work_dict = portable_work.to_portable_dict()
         except Exception as e:
-            log.exception("N4 Validation Failed: Could not extract dict from N3 instance:")
             return ContinuationResult(
                 work_id="unknown",
                 operation_id="unknown",
@@ -79,7 +93,6 @@ def continue_portable_work(
                 reason=f"Failed to serialize N3 instance: {e}",
             )
     else:
-        log.error("N4 Validation Failed: Unsupported input type '%s'", type(portable_work).__name__)
         return ContinuationResult(
             work_id="unknown",
             operation_id="unknown",
@@ -88,7 +101,6 @@ def continue_portable_work(
             reason=f"Unsupported input type: {type(portable_work).__name__}",
         )
 
-    # Run core validation checks
     val_res = validate_portable_work(work_dict)
     if not val_res.is_valid:
         primary_issue = val_res.issues[0].message if val_res.issues else "Unknown schema validation failure"
@@ -102,36 +114,34 @@ def continue_portable_work(
 
     work_id = val_res.work_id
 
-    # ── Step 2: Capability / Support check (SUPPORT_CHECK Stage) ──
+    # Step 2: Capability / Support check
     cap_res = resolve_target_capabilities(work_dict)
     if not cap_res.supported:
-        reasons_str = "; ".join(cap_res.reasons)
         return ContinuationResult(
             work_id=work_id,
             operation_id="unknown",
             stage=ContinuationStage.SUPPORT_CHECK,
             status=ContinuationStatus.UNSUPPORTED,
-            reason=reasons_str,
+            reason="; ".join(cap_res.reasons),
         )
 
-    # ── Step 3: Resolve physical target artifact paths (RESOLVE Stage) ──
+    # Step 3: Resolve artifacts
     art_refs = work_dict.get("artifact_references") or []
     art_res = resolve_target_artifacts(art_refs, artifact_registry=artifact_registry)
     if not art_res.resolved:
-        reasons_str = "; ".join(art_res.reasons)
         return ContinuationResult(
             work_id=work_id,
             operation_id="unknown",
             stage=ContinuationStage.RESOLVE,
             status=ContinuationStatus.BLOCKED,
-            reason=reasons_str,
+            reason="; ".join(art_res.reasons),
         )
 
-    # ── Step 4: Authorization Decision Gate (AUTHORIZE Stage) ──
+    # Step 4: Authorize
     is_auth, auth_reason = authorize_continuation(
         work_dict,
         auth_token=authorization_token,
-        local_policy_override=local_policy_override
+        local_policy_override=local_policy_override,
     )
     if not is_auth:
         return ContinuationResult(
@@ -142,36 +152,57 @@ def continue_portable_work(
             reason=auth_reason,
         )
 
-    # ── Step 5: Work Reconstruction (RECONSTRUCT Stage) ──
-    try:
-        reconstructed = reconstruct_executable_work(
-            portable_dict=work_dict,
-            resolved_paths=art_res.resolved_paths,
-            is_authorized=is_auth,
-            auth_reason=auth_reason,
-        )
-    except Exception as e:
-        log.exception("N4 Reconstruction Failed:")
-        return ContinuationResult(
-            work_id=work_id,
-            operation_id="unknown",
-            stage=ContinuationStage.RECONSTRUCT,
-            status=ContinuationStatus.RECONSTRUCTION_FAILED,
-            reason=f"Plan reconstruction failed: {e}",
-        )
+    # Step 5: Reconstruct
+    reconstructed = reconstruct_executable_work(
+        work_dict,
+        resolved_paths=art_res.resolved_paths,
+        is_authorized=is_auth,
+        auth_reason=auth_reason,
+    )
 
-    # ── Step 6: S18 Execution Handoff & Outcome (EXECUTE & OUTCOME Stages) ──
-    # Run the handoff to execution
-    result = handoff_to_s18(
+    # Step 6 & 7: Execute & Verify via S18
+    return handoff_to_s18(
         reconstructed,
         checkpoint_store_path=checkpoint_store_path,
         checkpoint_store_instance=checkpoint_store_instance,
     )
 
-    log.info(
-        "N4 Continuation Executed. Logical Work ID: %s, Handoff Target Operation ID: %s, Outcome Status: %s",
-        result.work_id,
-        result.operation_id,
-        result.status.value,
-    )
-    return result
+
+__all__ = [
+    # N4 Target Continuation
+    "continue_portable_work",
+    "ContinuationResult",
+    "ContinuationStage",
+    "ContinuationStatus",
+    "validate_portable_work",
+    "validate_portable_json",
+    "ValidationVerdict",
+    "resolve_target_capabilities",
+    "resolve_target_artifacts",
+    "authorize_continuation",
+    "reconstruct_executable_work",
+    "ReconstructedWork",
+    "handoff_to_s18",
+    # N5 Cross-Device Continuity
+    "generate_continuity_id",
+    "ContinuityOperation",
+    "ContinuityState",
+    "is_terminal",
+    "is_recoverable",
+    "is_success",
+    "derive_from_n4_status",
+    "derive_from_s18_status",
+    "HandoffRequest",
+    "HandoffSession",
+    "RecoveryPolicy",
+    "RecoveryAction",
+    "ContinuityTransferRequest",
+    "TransportResult",
+    "FluxTransportProvider",
+    "DefaultTransportAdapter",
+    "ContinuityCoordinator",
+    "ContinuityReconciler",
+    "ContinuityReconciliationReport",
+    "ContinuityRecord",
+    "ContinuityStore",
+]
