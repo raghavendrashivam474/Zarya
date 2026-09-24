@@ -1,0 +1,427 @@
+﻿======================================================================
+  N4 RECONNAISSANCE REPORT
+  Generated: 2026-09-24 08:48:54
+  Baseline: N3 v1.3.0-n3 (frozen)
+======================================================================
+
+SECTION 1: KEY FILE DISCOVERY
+----------------------------------------
+  [FOUND] agent\context\portable_work.py  (12579 bytes)
+  [FOUND] agent\context\work_model.py  (7301 bytes)
+  [FOUND] agent\context\unified.py  (11366 bytes)
+  [FOUND] agent\context\adapters.py  (11691 bytes)
+  [FOUND] agent\context\capture.py  (3958 bytes)
+  [FOUND] agent\lifecycle.py  (11636 bytes)
+  [FOUND] agent\work.py  (20336 bytes)
+  [FOUND] agent\resume.py  (7599 bytes)
+  [FOUND] agent\checkpoint.py  (9448 bytes)
+  [FOUND] agent\control.py  (2645 bytes)
+  [FOUND] agent\artifacts.py  (34389 bytes)
+  [FOUND] agent\context\device.py  (18854 bytes)
+  [FOUND] agent\ecosystem\identity.py  (2078 bytes)
+  [MISSING] plan*.py not found under agent/
+  [FOUND] agent\ecosystem\authorization.py  (1895 bytes)
+  [MISSING] ecosystem*.py not found under agent/
+
+SECTION 2: N3 PortableWork BOUNDARY (FROZEN)
+----------------------------------------
+── PortableWork class ──
+  agent\context\portable_work.py:131  class PortableWork:
+
+── Format version string ──
+  agent\context\portable_work.py:42  PORTABLE_WORK_FORMAT_VERSION = "n3-portable-v1"
+  agent\continuity\validation.py:7  #   - format version (n3-portable-v1)
+
+── make_portable() ──
+  agent\context\portable_work.py:291  def make_portable(
+
+── to_portable_dict() ──
+  agent\context\portable_work.py:184  def to_portable_dict(self) -> Dict[str, Any]:
+
+── from_portable_dict() ──
+  agent\context\portable_work.py:234  def from_portable_dict(cls, data: Dict[str, Any]) -> "PortableWork":
+
+── to_json() ──
+  agent\context\portable_work.py:229  def to_json(self, indent: Optional[int] = None) -> str:
+
+── from_json() ──
+  agent\context\portable_work.py:281  def from_json(cls, json_str: str) -> "PortableWork":
+
+SECTION 3: N2 SemanticWorkModel
+----------------------------------------
+── SemanticWorkModel class ──
+  agent\context\work_model.py:33  class SemanticWorkModel:
+
+── work_id references (context/) ──
+  agent\context\portable_work.py:151  work_id: str = ""
+  agent\context\portable_work.py:197  "work_id": self.work_id,
+  agent\context\portable_work.py:260  work_id=work.get("work_id", ""),
+  agent\context\portable_work.py:322  work_id=model.work_id,
+  agent\context\work_model.py:39  work_id: str
+  agent\context\work_model.py:54  "work_id": self.work_id,
+  agent\context\work_model.py:79  work_id: Optional[str] = None,
+  agent\context\work_model.py:84  - Logical work_id is distinct from operation_id (uses provided or stable UUID seed)
+  agent\context\work_model.py:92  # 1. Determine stable logical work_id (derived deterministically or uniquely)
+  agent\context\work_model.py:93  effective_work_id = work_id or f"work-{uuid.uuid5(uuid.NAMESPACE_DNS, work_state.operation_id).hex[:16]}"
+  agent\context\work_model.py:163  work_id=effective_work_id,
+
+── artifact_references ──
+  agent\context\portable_work.py:166  artifact_references: List[str] = field(default_factory=list)
+  agent\context\portable_work.py:212  "artifact_references": list(self.artifact_references),
+  agent\context\portable_work.py:271  artifact_references=context.get("artifact_references", []),
+  agent\context\portable_work.py:333  artifact_references=list(model.artifact_references),
+  agent\context\work_model.py:46  artifact_references: List[str] = field(default_factory=list)  # S12 artifact_ids
+  agent\context\work_model.py:68  "artifact_references": list(self.artifact_references),
+  agent\context\work_model.py:170  artifact_references=list(sorted(artifact_ids)),
+  agent\continuity\resolution.py:19  def resolve_target_artifacts(artifact_references: list) -> "ArtifactResolutionResult":
+
+── plan_reference ──
+  agent\context\portable_work.py:153  plan_reference: Dict[str, Any] = field(default_factory=dict)
+  agent\context\portable_work.py:199  "plan_reference": self.plan_reference,
+  agent\context\portable_work.py:262  plan_reference=work.get("plan_reference", {}),
+  agent\context\portable_work.py:324  plan_reference=dict(model.plan_reference),
+  agent\context\work_model.py:41  plan_reference: Dict[str, Any]
+  agent\context\work_model.py:56  "plan_reference": self.plan_reference,
+  agent\context\work_model.py:165  plan_reference=work_state.plan,
+  agent\continuity\validation.py:11  #   - work_id / plan_reference integrity
+
+── execution_reference ──
+  agent\context\portable_work.py:157  execution_reference: Optional[str] = None
+  agent\context\portable_work.py:203  "execution_reference": self.execution_reference,
+  agent\context\portable_work.py:264  execution_reference=execution.get("execution_reference"),
+  agent\context\portable_work.py:326  execution_reference=model.execution_reference,
+  agent\context\work_model.py:42  execution_reference: Optional[str] = None  # S18 operation_id
+  agent\context\work_model.py:57  "execution_reference": self.execution_reference,
+  agent\context\work_model.py:166  execution_reference=work_state.operation_id,
+
+── authorization_reference ──
+  agent\context\portable_work.py:335  authorization_metadata=dict(model.authorization_reference) if model.authorization_reference else None,
+  agent\context\work_model.py:47  authorization_reference: Optional[Dict[str, Any]] = None      # Auth metadata
+  agent\context\work_model.py:69  "authorization_reference": self.authorization_reference,
+  agent\context\work_model.py:171  authorization_reference=auth_ref,
+
+SECTION 4: S18 EXECUTION / LIFECYCLE
+----------------------------------------
+── Lifecycle state/status enums ──
+  agent\artifacts.py:90  class ResolutionStatus(str, enum.Enum):
+  agent\lifecycle.py:29  class LifecycleStatus(str, enum.Enum):
+  agent\state.py:32  class StateFreshness(str, Enum):
+  agent\state.py:50  class StateDomain(str, Enum):
+  agent\context\device.py:67  class TrustState(str, Enum):
+  agent\context\device.py:85  class DeviceResolutionStatus(str, Enum):
+  agent\context\freshness.py:17  class FreshnessState(Enum):
+  agent\continuity\result.py:25  class ContinuationStatus(Enum):
+
+── Verification outcomes ──
+  agent\adaptive_work.py:234  if status == "VERIFIED_SUCCESS" or recovery.get("status") == "RECOVERED":
+  agent\artifacts.py:12  verified artifact unless S2 verification confirms VERIFIED_SUCCESS.
+  agent\artifacts.py:150  last_verified_at=now_str if verification_status == "VERIFIED_SUCCESS" else None,
+  agent\artifacts.py:173  last_verified_at=now_str if verification_status == "VERIFIED_SUCCESS" else None,
+  agent\artifacts.py:242  # The most recent artifact for which verification produced VERIFIED_SUCCESS.
+  agent\artifacts.py:414  if artifact.verification_status == "VERIFIED_SUCCESS":
+  agent\artifacts.py:440  v_is_success = v_status == "VERIFIED_SUCCESS"
+  agent\artifacts.py:489  eff_v_status = "VERIFIED_SUCCESS" if v_is_success else "UNKNOWN"
+  agent\artifacts.py:509  verification_status="VERIFIED_SUCCESS",
+  agent\artifacts.py:514  "S12.1 ActiveContext: set active created artifact '%s' (VERIFIED_SUCCESS)",
+  agent\context.py:500  - VERIFIED_SUCCESS observations are strong candidates for OBSERVATION.
+  agent\context.py:501  - VERIFIED_FAILURE observations are recorded as FAILURE_CONTEXT when
+  agent\context.py:520  if status == "VERIFIED_SUCCESS":
+  agent\context.py:522  if status == "VERIFIED_FAILURE":
+  agent\failure.py:89  # Domain-specific reasoners (VERIFIED_FAILURE path)
+  agent\failure.py:111  "VERIFIED_FAILURE",
+  agent\failure.py:123  "VERIFIED_FAILURE",
+  agent\failure.py:142  "VERIFIED_FAILURE",
+  agent\failure.py:168  "VERIFIED_FAILURE",
+  agent\failure.py:186  "VERIFIED_FAILURE",
+  agent\failure.py:197  "VERIFIED_FAILURE",
+  agent\failure.py:224  "VERIFIED_FAILURE",
+  agent\failure.py:282  if status == "VERIFIED_SUCCESS":
+  agent\failure.py:291  # VERIFIED_FAILURE -- dispatch by domain
+  agent\intent.py:503  if status == "VERIFIED_SUCCESS":
+  agent\intent.py:506  elif status == "VERIFIED_FAILURE":
+  agent\persona.py:48  "Never claim an action succeeded unless verified by Zarya runtime (VERIFIED_SUCCESS).",
+  agent\persona.py:67  status: str = "VERIFIED_SUCCESS"
+  agent\persona.py:89  - VERIFIED_SUCCESS -> Shefali confirms verified outcome.
+  agent\persona.py:90  - VERIFIED_FAILURE -> Shefali honestly reports failure.
+
+── Lifecycle operations ──
+  agent\checkpoint.py:48  def default_checkpoint_db_path() -> Path:
+  agent\checkpoint.py:65  self.path: Path = Path(path) if path is not None else default_checkpoint_db_path()
+  agent\control.py:17  def request_pause(operation_id: str, checkpoint_store: CheckpointStore, reason: str = "User requested pause") -> Dict[str, Any]:
+  agent\control.py:41  def request_cancel(operation_id: str, checkpoint_store: CheckpointStore, reason: str = "User requested cancellation") -> Dict[str, Any]:
+  agent\control.py:61  def get_operation_status(operation_id: str, checkpoint_store: CheckpointStore) -> Optional[Dict[str, Any]]:
+  agent\lifecycle.py:227  def record_checkpoint(self) -> bool:
+  agent\resume.py:45  def verify_checkpoint_reality(
+  agent\resume.py:92  def resume_work(
+  agent\server.py:30  from .checkpoint import CheckpointStore, default_checkpoint_db_path
+  agent\server.py:282  async def resume_operation(request: Request):
+  agent\server.py:305  async def pause_operation(request: Request):
+  agent\server.py:318  async def cancel_operation(request: Request):
+  agent\tools\pc.py:235  def _cancel(args: Dict[str, Any]) -> Dict[str, Any]:
+
+── operation_id references ──
+  agent\checkpoint.py:30  operation_id    TEXT PRIMARY KEY,
+  agent\checkpoint.py:136  operation_id, goal, status, current_step,
+  agent\checkpoint.py:140  ON CONFLICT(operation_id) DO UPDATE SET
+  agent\checkpoint.py:148  state.operation_id,
+  agent\checkpoint.py:171  def load(self, operation_id: str) -> Optional[WorkState]:
+  agent\checkpoint.py:172  """Load a WorkState by operation_id. Returns None if not found or corrupted."""
+  agent\checkpoint.py:180  "SELECT state_json FROM s18_work_operations WHERE operation_id = ?",
+  agent\checkpoint.py:181  (operation_id,),
+  agent\control.py:17  def request_pause(operation_id: str, checkpoint_store: CheckpointStore, reason: str = "User requested pause") -> Dict[str, Any]:
+  agent\control.py:23  work_state = checkpoint_store.load(operation_id)
+  agent\control.py:25  return {"success": False, "error": f"Operation '{operation_id}' not found."}
+  agent\control.py:37  log.info("Operation '%s' marked as PAUSED.", operation_id)
+  agent\control.py:38  return {"success": True, "operation_id": operation_id, "status": work_state.status.value}
+  agent\control.py:41  def request_cancel(operation_id: str, checkpoint_store: CheckpointStore, reason: str = "User requested cancellation") -> Dict[str, Any]:
+  agent\control.py:43  work_state = checkpoint_store.load(operation_id)
+  agent\control.py:45  return {"success": False, "error": f"Operation '{operation_id}' not found."}
+  agent\control.py:57  log.info("Operation '%s' marked as CANCELLED.", operation_id)
+  agent\control.py:58  return {"success": True, "operation_id": operation_id, "status": work_state.status.value}
+  agent\control.py:61  def get_operation_status(operation_id: str, checkpoint_store: CheckpointStore) -> Optional[Dict[str, Any]]:
+  agent\control.py:63  work_state = checkpoint_store.load(operation_id)
+  agent\lifecycle.py:168  operation_id: str
+  agent\lifecycle.py:212  self.status.value, target.value, self.operation_id, reason,
+  agent\lifecycle.py:221  old.value, target.value, self.operation_id, reason,
+  agent\lifecycle.py:237  self.status.value, self.operation_id,
+  agent\lifecycle.py:269  "operation_id": self.operation_id,
+  agent\lifecycle.py:288  operation_id=data["operation_id"],
+  agent\lifecycle.py:317  operation_id=f"op-{uuid.uuid4().hex[:12]}",
+  agent\resume.py:82  log.warning("S18 Reality Check FAILED for op %s: %s", work_state.operation_id, reason)
+  agent\resume.py:86  work_state.operation_id, work_state.checkpoint_step)
+  agent\resume.py:93  operation_id: str,
+
+── WorkPlan class ──
+  agent\intent.py:37  class S8WorkPlan:
+
+SECTION 5: S12 ARTIFACT IDENTITY
+----------------------------------------
+── Artifact classes ──
+  agent\artifacts.py:82  class ArtifactType(str, enum.Enum):
+  agent\artifacts.py:98  class ArtifactIdentity:
+  agent\context\unified.py:149  class ArtifactReference:
+
+── artifact_id references ──
+  agent\artifacts.py:101  artifact_id: str
+  agent\artifacts.py:117  artifact_id=data.get("artifact_id", ""),
+  agent\artifacts.py:141  artifact_id = f"artifact:file:{safe_suffix}"
+  agent\artifacts.py:144  artifact_id=artifact_id,
+  agent\artifacts.py:164  artifact_id = f"artifact:app:{clean_name}"
+  agent\artifacts.py:167  artifact_id=artifact_id,
+  agent\artifacts.py:237  self._artifacts: Dict[str, ArtifactIdentity] = {}  # artifact_id -> identity
+  agent\artifacts.py:411  self._artifacts[artifact.artifact_id] = artifact
+  agent\artifacts.py:482  existing_artifact.artifact_id,
+  agent\artifacts.py:662  # 1. Direct match on artifact_id
+  agent\artifacts.py:669  reason=f"Direct match on artifact_id: {art.artifact_id}",
+  agent\lifecycle.py:127  artifact_ids: List[str] = field(default_factory=list)
+  agent\lifecycle.py:141  "artifact_ids": list(self.artifact_ids),
+  agent\lifecycle.py:153  artifact_ids=data.get("artifact_ids", []),
+  agent\lifecycle.py:178  artifact_ids: List[str] = field(default_factory=list)
+  agent\lifecycle.py:279  "artifact_ids": list(self.artifact_ids),
+  agent\lifecycle.py:300  artifact_ids=data.get("artifact_ids", []),
+  agent\context\adapters.py:182  def adapt_artifact_identity(
+  agent\context\adapters.py:190  art_id = art.get("artifact_id", "")
+  agent\context\adapters.py:196  art_id = getattr(art, "artifact_id", "")
+  agent\context\adapters.py:213  artifact_id=art_id,
+  agent\context\adapters.py:322  adapted = adapt_artifact_identity(art)
+  agent\context\capture.py:14  adapt_artifact_identity,
+  agent\context\capture.py:88  adapted_art = adapt_artifact_identity(art)
+  agent\context\capture.py:90  # Avoid duplicates by artifact_id
+  agent\context\capture.py:91  if not any(a.artifact_id == adapted_art.artifact_id for a in collected_artifacts):
+  agent\context\portable_work.py:24  S12 -> ArtifactIdentity (referenced by artifact_id only)
+  agent\context\unified.py:22  S12 → ArtifactIdentity (referenced by artifact_id)
+  agent\context\unified.py:155  artifact_id: str
+  agent\context\work_model.py:29  artifact_ids: List[str] = field(default_factory=list)
+
+── Artifact resolution functions ──
+  agent\continuity\resolution.py:19  def resolve_target_artifacts(artifact_references: list) -> "ArtifactResolutionResult":
+
+SECTION 6: S17 DEVICE IDENTITY
+----------------------------------------
+── Device classes ──
+  agent\context\device.py:27  class DeviceType(str, Enum):
+  agent\context\device.py:85  class DeviceResolutionStatus(str, Enum):
+  agent\context\device.py:94  class DeviceIdentity:
+  agent\context\device.py:155  class DeviceRegistry:
+  agent\context\device.py:263  class DeviceResolutionResult:
+  agent\context\unified.py:82  class DeviceContext:
+
+── device_id references ──
+  agent\checkpoint.py:38  device_id       TEXT,
+  agent\checkpoint.py:138  state_json, device_id, created_at, updated_at
+  agent\checkpoint.py:156  state.device_id,
+  agent\lifecycle.py:179  device_id: Optional[str] = None
+  agent\lifecycle.py:280  "device_id": self.device_id,
+  agent\lifecycle.py:301  device_id=data.get("device_id"),
+  agent\lifecycle.py:312  device_id: Optional[str] = None,
+  agent\lifecycle.py:321  device_id=device_id,
+  agent\context\adapters.py:33  def adapt_device_identity(
+  agent\context\adapters.py:47  dev_id = device.get("device_id", "")
+  agent\context\adapters.py:52  dev_id = getattr(device, "device_id", "")
+  agent\context\adapters.py:64  source="s17_device_identity",
+  agent\context\adapters.py:71  device_id=dev_id,
+  agent\context\capture.py:16  adapt_device_identity,
+  agent\context\capture.py:59  dev_ctx: Optional[DeviceContext] = adapt_device_identity(device)
+  agent\context\device.py:99  device_id: str
+  agent\context\device.py:109  if not self.device_id or not isinstance(self.device_id, str) or not self.device_id.strip():
+  agent\context\device.py:110  raise ValueError("device_id must be a non-empty string")
+  agent\context\device.py:131  "device_id": self.device_id,
+  agent\context\device.py:144  device_id=data["device_id"],
+  agent\context\device.py:166  self._devices[device.device_id] = device
+  agent\context\device.py:168  def unregister(self, device_id: str) -> Optional[DeviceIdentity]:
+  agent\context\device.py:169  if not device_id:
+  agent\context\device.py:172  return self._devices.pop(device_id, None)
+  agent\context\device.py:174  def get(self, device_id: str) -> Optional[DeviceIdentity]:
+  agent\context\device.py:175  if not device_id:
+  agent\context\device.py:178  return self._devices.get(device_id)
+  agent\context\device.py:190  return sorted(matches, key=lambda d: d.device_id)
+  agent\context\device.py:214  return sorted(results, key=lambda d: d.device_id)
+  agent\context\device.py:216  def set_availability(self, device_id: str, is_available: bool) -> Optional[DeviceIdentity]:
+
+SECTION 7: AUTHORIZATION
+----------------------------------------
+── Authorization patterns ──
+  agent\adaptive_work.py:6  authorized alternative steps toward the original goal.
+  agent\adaptive_work.py:149  # Case 2: Filesystem fallback (Missing primary report -> try known authorized backup)
+  agent\intent.py:500  if "Unauthorized" in summary or (status == "INCOMPLETE" and "authorized" in summary.lower()):
+  agent\intent.py:527  authorized: bool = False,
+  agent\intent.py:570  work_result = execute_work(s6_plan_dict, authorized=authorized)
+  agent\lifecycle.py:36  AUTHORIZED = "AUTHORIZED"
+  agent\lifecycle.py:51  LifecycleStatus.AUTHORIZED,
+  agent\lifecycle.py:56  LifecycleStatus.AUTHORIZED: frozenset({
+  agent\persona.py:33  "a verified computer-work system. I help you carry out authorized, "
+  agent\persona.py:42  "Execute authorized terminal commands with output verification",
+  agent\persona.py:93  - UNAUTHORIZED / INCOMPLETE (auth required) -> Shefali explains authorization requirement.
+  agent\persona.py:106  status == "UNAUTHORIZED" or
+  agent\persona.py:108  "not authorized" in base_text.lower()
+  agent\persona.py:221  f"a verified computer-work system. I help you carry out authorized desktop tasks "
+  agent\persona.py:253  authorized: bool = False,
+  agent\persona.py:285  authorized=authorized,
+  agent\recovery.py:128  def check_authorization(
+  agent\recovery.py:133  """Determine if recovery is authorized by explicit policy.
+  agent\recovery.py:141  (is_authorized, reason) tuple.
+  agent\recovery.py:152  return True, "Authorized: Relaunching application is safe and explicitly permitted by policy."
+  agent\recovery.py:153  return False, f"Unauthorized: Recovery policy for '{category}' does not authorize automatic recovery."
+  agent\recovery.py:155  return True, "Authorized: Policy does not require explicit recovery-level authorization."
+  agent\recovery.py:199  authorized: bool = False,
+  agent\recovery.py:208  "authorized": authorized,
+  agent\recovery.py:246  authorized, auth_reason = check_authorization(
+  agent\recovery.py:249  if not authorized:
+  agent\recovery.py:252  f"Not authorized: {auth_reason}",
+  agent\recovery.py:271  authorized=True,
+  agent\recovery.py:285  authorized=True,
+  agent\recovery.py:295  authorized=True,
+
+SECTION 8: EIP-1 ECOSYSTEM BOUNDARY
+----------------------------------------
+── Ecosystem/EIP references ──
+  agent\server.py:35  # EIP-1: Ecosystem Integration Boundary
+  agent\server.py:36  from agent.ecosystem.routes import router as ecosystem_router
+  agent\server.py:37  from agent.ecosystem.authorization import get_token as get_ecosystem_token
+  agent\server.py:38  from agent.ecosystem.protocol import PROTOCOL_VERSION as EIP_PROTOCOL_VERSION
+  agent\server.py:76  # EIP-1: Mount ecosystem integration boundary
+  agent\server.py:77  app.include_router(ecosystem_router)
+  agent\server.py:178  log.info("EIP-1 ecosystem boundary active: protocol=%s, token=%s", EIP_PROTOCOL_VERSION, get_ecosystem_token())
+  agent\ecosystem\authorization.py:1  """EIP-1 Authorization.
+  agent\ecosystem\authorization.py:3  Provides token-based authorization for ecosystem boundary access.
+  agent\ecosystem\authorization.py:7  1. Ecosystem consumer presents a token via X-Ecosystem-Token header.
+  agent\ecosystem\authorization.py:13  The token can be pre-configured via ZARYA_ECOSYSTEM_TOKEN or generated
+  agent\ecosystem\authorization.py:21  log = logging.getLogger("zarya.ecosystem.auth")
+  agent\ecosystem\authorization.py:24  _ECOSYSTEM_TOKEN: str = os.environ.get("ZARYA_ECOSYSTEM_TOKEN") or secrets.token_urlsafe(32)
+  agent\ecosystem\authorization.py:26  log.info("EIP-1 ecosystem token initialized")
+  agent\ecosystem\authorization.py:30  """Return the current ecosystem token.
+  agent\ecosystem\authorization.py:35  return _ECOSYSTEM_TOKEN
+  agent\ecosystem\authorization.py:39  """Validate an ecosystem token.
+  agent\ecosystem\authorization.py:51  return secrets.compare_digest(token.strip(), _ECOSYSTEM_TOKEN)
+  agent\ecosystem\authorization.py:57  Useful for the /ecosystem/v1/auth-info endpoint.
+  agent\ecosystem\authorization.py:61  "header_name": "X-Ecosystem-Token",
+  agent\ecosystem\authorization.py:63  "Include the ecosystem token in the X-Ecosystem-Token "
+  agent\ecosystem\capabilities.py:1  """EIP-1 Capability Advertisement.
+  agent\ecosystem\capabilities.py:3  Explicitly declares what Zarya exposes through the ecosystem
+  agent\ecosystem\capabilities.py:10  small, reviewed subset through the ecosystem boundary.
+  agent\ecosystem\capabilities.py:15  log = logging.getLogger("zarya.ecosystem.capabilities")
+  agent\ecosystem\capabilities.py:62  "status": "string (ecosystem status)",
+  agent\ecosystem\capabilities.py:71  # "safe to expose to ecosystem consumers."
+  agent\ecosystem\capabilities.py:73  ALLOWED_ECOSYSTEM_TOOLS = frozenset({
+  agent\ecosystem\capabilities.py:94  """Check if a specific tool is permitted through the ecosystem boundary."""
+  agent\ecosystem\capabilities.py:95  return tool_name in ALLOWED_ECOSYSTEM_TOOLS
+
+SECTION 9: FULL agent/ FILE TREE
+----------------------------------------
+  agent\__init__.py
+  agent\adaptive_work.py
+  agent\artifacts.py
+  agent\backends\__init__.py
+  agent\backends\base.py
+  agent\backends\factory.py
+  agent\backends\linux_gnome.py
+  agent\backends\linux_wayland.py
+  agent\backends\macos.py
+  agent\backends\windows.py
+  agent\checkpoint.py
+  agent\context.py
+  agent\context\__init__.py
+  agent\context\adapters.py
+  agent\context\capture.py
+  agent\context\device.py
+  agent\context\freshness.py
+  agent\context\portable_work.py
+  agent\context\references.py
+  agent\context\resolver.py
+  agent\context\unified.py
+  agent\context\work_model.py
+  agent\continuity\__init__.py
+  agent\continuity\execution.py
+  agent\continuity\reconstruction.py
+  agent\continuity\resolution.py
+  agent\continuity\result.py
+  agent\continuity\validation.py
+  agent\control.py
+  agent\ecosystem\__init__.py
+  agent\ecosystem\authorization.py
+  agent\ecosystem\capabilities.py
+  agent\ecosystem\errors.py
+  agent\ecosystem\identity.py
+  agent\ecosystem\protocol.py
+  agent\ecosystem\routes.py
+  agent\ecosystem\status.py
+  agent\ecosystem\transport.py
+  agent\failure.py
+  agent\intent.py
+  agent\lifecycle.py
+  agent\persona.py
+  agent\recovery.py
+  agent\registry.py
+  agent\resume.py
+  agent\server.py
+  agent\state.py
+  agent\test_intent.py
+  agent\test_persona.py
+  agent\tools\__init__.py
+  agent\tools\applications.py
+  agent\tools\browser.py
+  agent\tools\browser_observer.py
+  agent\tools\camera.py
+  agent\tools\clipboard.py
+  agent\tools\coding.py
+  agent\tools\confirmation.py
+  agent\tools\conversation.py
+  agent\tools\desktop_observer.py
+  agent\tools\files.py
+  agent\tools\google.py
+  agent\tools\hyprland.py
+  agent\tools\iitm.py
+  agent\tools\news.py
+  agent\tools\os_input.py
+  agent\tools\pc.py
+  agent\tools\screenshot.py
+  agent\tools\search.py
+  agent\tools\startup.py
+  agent\tools\system.py
+  agent\tools\terminal.py
+  agent\tools\weather.py
+  agent\tools\websites.py
+  agent\tools\windows.py
+  agent\work.py
+
+
