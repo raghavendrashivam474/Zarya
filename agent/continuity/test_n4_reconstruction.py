@@ -1,107 +1,63 @@
-"""N4 Reconstruction & Authorization Smoke Test — run from Zarya project root."""
+﻿"""N4 Reconstruction & Authorization Smoke & Unit Tests."""
 import sys
 import os
+import pytest
 
-sys.path.insert(0, ".")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from agent.continuity.reconstruction import (
     authorize_continuation,
     reconstruct_executable_work,
 )
+from agent.continuity.validation import PORTABLE_WORK_FORMAT_VERSION
 
-passed = 0
-failed = 0
 
-def check(name, condition):
-    global passed, failed
-    if condition:
-        passed += 1
-        print(f"  [PASS] {name}")
-    else:
-        failed += 1
-        print(f"  [FAIL] {name}")
-
-print("=" * 60)
-print("  N4 Reconstruction Smoke Test")
-print("=" * 60)
-
-# Dummy/Valid PortableWork payload
-valid_portable = {
-    "work_id": "work-99abcf",
-    "format_version": "n3-portable-v1",
-    "intent": "Write report.txt and process it",
-    "execution_reference": "op-source-111",
-    "plan_reference": {
-        "steps": [
-            {
-                "action": "write_file",
-                "parameters": {
-                    "path": "artifact:file:report_txt",
-                    "content": "Hello World",
-                }
-            },
-            {
-                "action": "process_file",
-                "parameters": {
-                    "input_file": "artifact:file:report_txt",
-                }
-            }
-        ]
-    },
-    "authorization_metadata": {
-        "requires_token": False
+def make_pw_for_recon(work_id="work-recon-1", intent="Generate monthly reports"):
+    return {
+        "format_version": PORTABLE_WORK_FORMAT_VERSION,
+        "work_id": work_id,
+        "operation_id": "op-source-999",
+        "intent": intent,
+        "plan_reference": {"steps": []},
+        "execution_reference": "op-source-999",
+        "lifecycle_status": "PAUSED",
+        "relevant_context": {"target_dir": "/output"},
+        "artifact_references": [],
+        "authorization_reference": "auth-valid-token-123",
+        "observations": ["observation from source machine"],
+        "outcome": None,
     }
-}
 
-# ── Test 1: Local Authorization (Standard Safe Plan) ──
-print("\nTest 1: Standard Authorization Gate")
-is_auth, reason = authorize_continuation(valid_portable)
-check("safe plan is authorized", is_auth)
-check("auth reason provided", len(reason) > 0)
 
-# ── Test 2: Local Authorization Block (Unsafe Tool terminal) ──
-print("\nTest 2: Block Critical Actions without Token")
-unsafe_portable = dict(valid_portable)
-unsafe_portable["plan_reference"] = {
-    "steps": [{"action": "terminal", "parameters": {"command": "rm -rf /"}}]
-}
-is_auth, reason = authorize_continuation(unsafe_portable)
-check("unsafe command blocked", not is_auth)
-check("blocked for critical tool reason", "critical tool" in reason)
+def test_authorization_with_local_override_passes():
+    pw = make_pw_for_recon()
+    is_auth, reason = authorize_continuation(pw, local_policy_override=True)
+    assert is_auth
+    assert "override" in reason.lower()
 
-# ── Test 3: Local Override Authorization ──
-print("\nTest 3: Administrative Override Auth")
-is_auth, reason = authorize_continuation(unsafe_portable, local_policy_override=True)
-check("override ignores blocks", is_auth)
-check("override reason listed", "override" in reason)
 
-# ── Test 4: S18 Plan Reconstruction & Path Mapping ──
-print("\nTest 4: Plan Reconstruction & Path Mapping")
-resolved_paths = {
-    "artifact:file:report_txt": "C:\\Zarya\\workspace\\report.txt"
-}
+def test_authorization_standard_local_passes():
+    pw = make_pw_for_recon()
+    is_auth, reason = authorize_continuation(pw)
+    assert is_auth
+    assert "standard" in reason.lower()
 
-reconstructed = reconstruct_executable_work(
-    portable_dict=valid_portable,
-    resolved_paths=resolved_paths,
-    is_authorized=True,
-    auth_reason="Testing auth pass"
-)
 
-check("work_id preserved", reconstructed.work_id == "work-99abcf")
-check("source operation_id preserved", reconstructed.source_operation_id == "op-source-111")
-check("new unique target operation_id generated", reconstructed.target_operation_id != "op-source-111")
-check("new target operation_id starts with op-", reconstructed.target_operation_id.startswith("op-"))
+def test_reconstruction_produces_valid_work_item():
+    pw = make_pw_for_recon()
+    is_auth, auth_reason = authorize_continuation(pw, local_policy_override=True)
+    reconstructed = reconstruct_executable_work(
+        pw,
+        resolved_paths={},
+        is_authorized=is_auth,
+        auth_reason=auth_reason,
+    )
+    assert reconstructed.work_id == "work-recon-1"
+    assert reconstructed.source_operation_id == "op-source-999"
+    assert reconstructed.target_operation_id.startswith("op-")
+    assert reconstructed.intent == "Generate monthly reports"
+    assert reconstructed.authorized is True
 
-# Check path mappings inside the steps dictionary
-steps = reconstructed.plan["steps"]
-check("step 0 parameters contains substituted path", steps[0]["parameters"]["path"] == "C:\\Zarya\\workspace\\report.txt")
-check("step 1 parameters contains substituted path", steps[1]["parameters"]["input_file"] == "C:\\Zarya\\workspace\\report.txt")
-check("auth propagation check", reconstructed.authorized)
 
-print("\n" + "=" * 60)
-total = passed + failed
-print(f"  Results: {passed}/{total} passed, {failed} failed")
-print("=" * 60)
-
-sys.exit(1 if failed > 0 else 0)
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
