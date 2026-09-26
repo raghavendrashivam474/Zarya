@@ -1,4 +1,4 @@
-# N4.4 — S18 Execution Handoff Adapter
+﻿# N4.4 â€” S18 Execution Handoff Adapter
 # Phase: N | Sprint: N4
 # Baseline: N3 v1.3.0-n3 (frozen)
 #
@@ -143,7 +143,7 @@ def _direct_db_insert(db_store: Any, reconstructed: ReconstructedWork) -> None:
 
 def _map_s18_outcome_to_n4(reconstructed: ReconstructedWork, s18_result: Dict[str, Any]) -> ContinuationResult:
     """Map real S18 engine dictionary outputs to the strict N4 contract."""
-    status_str = s18_result.get("status", "").upper()
+    status_str = (s18_result.get("overall_status") or s18_result.get("status") or s18_result.get("outcome") or "").upper()
     summary = s18_result.get("summary", "")
 
     if status_str in ("VERIFIED_SUCCESS", "SUCCESS", "COMPLETED"):
@@ -203,3 +203,4 @@ def _run_standalone_verification(reconstructed: ReconstructedWork) -> Continuati
         reason="Standalone execution and physical file verification completed successfully.",
         observations=observations,
     )
+
