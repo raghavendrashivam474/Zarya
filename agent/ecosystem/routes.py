@@ -217,3 +217,71 @@ async def ecosystem_operation_status(
         "lifecycle_status": lifecycle_str,
         "detail": status_info,
     }
+
+from agent.continuity import continue_portable_work, ContinuationStatus, ContinuationStage
+
+
+class EcosystemContinueRequest(BaseModel):
+    """Ecosystem work continuation contract carrying PortableWork."""
+    portable_work: Dict[str, Any] = Field(..., description="PortableWork dict from Zarya N3.")
+    source_device_id: str = Field(default="", description="Device ID of the source node.")
+    continuity_id: str = Field(default="", description="Continuity session ID for correlation.")
+
+
+@router.post("/work/continue")
+async def ecosystem_continue(
+    req: EcosystemContinueRequest,
+    x_ecosystem_token: Optional[str] = Header(None),
+):
+    """Execute incoming portable work through Zarya's N4 continuation pipeline.
+
+    Runs VALIDATE -> SUPPORT_CHECK -> RESOLVE -> AUTHORIZE -> RECONSTRUCT -> EXECUTE -> OUTCOME.
+    """
+    _require_auth(x_ecosystem_token)
+
+    try:
+        # Run N4 continuation pipeline
+        result = continue_portable_work(
+            req.portable_work,
+            authorization_token=x_ecosystem_token,
+            local_policy_override=True,
+        )
+
+        # Map N4 ContinuationStatus to ecosystem verification outcome
+        if result.status == ContinuationStatus.VERIFIED_SUCCESS:
+            outcome = "VERIFIED_SUCCESS"
+        elif result.status in (ContinuationStatus.VERIFIED_FAILURE, ContinuationStatus.RECONSTRUCTION_FAILED):
+            outcome = "VERIFIED_FAILURE"
+        else:
+            outcome = "UNKNOWN"
+
+        reconstruction_completed = result.stage in (
+            ContinuationStage.RECONSTRUCT,
+            ContinuationStage.EXECUTE,
+            ContinuationStage.VERIFY,
+            ContinuationStage.OUTCOME,
+        ) and result.status != ContinuationStatus.RECONSTRUCTION_FAILED
+
+        execution_completed = result.stage in (
+            ContinuationStage.EXECUTE,
+            ContinuationStage.VERIFY,
+            ContinuationStage.OUTCOME,
+        )
+
+        return {
+            "operation_id": result.operation_id,
+            "outcome": outcome,
+            "reconstruction_completed": reconstruction_completed,
+            "execution_completed": execution_completed,
+            "result": result.outcome_details or {},
+            "summary": result.reason or ("Continuity operation succeeded" if result.is_success else f"Stage: {result.stage.value}"),
+        }
+    except Exception as e:
+        log.exception("Unexpected error in /work/continue: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=make_error(
+                EcosystemErrorCode.EXECUTION_FAILED,
+                f"Continuation pipeline failed with error: {str(e)}"
+            )
+        )
